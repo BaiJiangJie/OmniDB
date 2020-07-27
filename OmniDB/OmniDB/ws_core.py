@@ -645,7 +645,9 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     return True
 
 def start_wsserver_thread():
+    # 线程开启Web Socket服务
     t = threading.Thread(target=start_wsserver)
+    # 设置为后台运行
     t.setDaemon(True)
     t.start()
 
