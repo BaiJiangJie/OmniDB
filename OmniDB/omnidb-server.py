@@ -254,7 +254,7 @@ class DjangoApplication(object):
         #: 挂载项目静态文件
         self.mount_static(OmniDB.settings.STATIC_URL, OmniDB.settings.STATIC_ROOT)
 
-        # TODO: 配置 Web Server Cherrypy Tree
+        # TODO: 配置 Cherrypy 外部的WSGI服务处理器
         cherrypy.tree.graft(WSGIHandler())
 
         port = parameters['listening_port']
@@ -295,7 +295,7 @@ class DjangoApplication(object):
                 v_cherrypy_config['server.ssl_private_key'] = parameters['ssl_key_file']
                 v_cherrypy_config['server.ssl_context'] = ssl_ctx
 
-            #: 设置cherrypy配置选项
+            #: 设置cherrypy全局配置项
             cherrypy.config.update(v_cherrypy_config)
 
             print ("Starting server {0} at {1}:{2}{3}.".format(OmniDB.settings.OMNIDB_VERSION,parameters['listening_address'],str(port),OmniDB.settings.PATH),flush=True)
