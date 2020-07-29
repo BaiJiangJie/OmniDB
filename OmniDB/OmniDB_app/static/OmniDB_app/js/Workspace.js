@@ -199,7 +199,8 @@ function getDatabaseList(p_init, p_callback) {
 						}
 
 						if (!v_has_old_tabs)
-							v_connTabControl.tag.createConnTab(v_connTabControl.tag.connections[0].v_conn_id);
+							v_connTabControl.tag.createConnTab(v_conn_id_default_open);
+							//v_connTabControl.tag.createConnTab(v_connTabControl.tag.connections[0].v_conn_id);
 
 					}
 					else {

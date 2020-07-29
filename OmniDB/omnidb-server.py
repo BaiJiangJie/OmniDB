@@ -305,6 +305,9 @@ class DjangoApplication(object):
             # Startup
             startup.startup_procedure()
 
+            #: 注册JumpServer Terminal
+            startup.registry_terminal()
+
             #: 开启Cherrypy Web服务
             cherrypy.engine.start()
 

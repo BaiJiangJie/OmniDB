@@ -2,6 +2,7 @@ from . import user_database
 from . import settings
 import os
 import time
+import requests
 import OmniDB_app.include.Spartacus as Spartacus
 import OmniDB_app.include.Spartacus.Database as Database
 import OmniDB_app.include.Spartacus.Utils as Utils
@@ -36,3 +37,26 @@ def startup_procedure():
     except Exception as exc:
         print('Error:')
         print(exc)
+
+def registry_terminal():
+    if os.path.exists(settings.JUMPSERVER_KEY_FILE):
+        print('Terminal registered')
+        return
+
+    res_terminal = requests.post(
+        url='{}{}'.format(settings.CORE_URL, '/api/v2/terminal/terminal-registrations/'),
+        data={'name': '[OmniDB] bai'},
+        headers={
+            'Authorization': 'BootstrapToken {}'.format(settings.BOOTSTRAP_TOKEN),
+            'X-JMS-ORG': 'ROOT'
+        },
+    )
+    if res_terminal.status_code != 201:
+        return False
+
+    terminal = res_terminal.json()
+    access_key_id = terminal['service_account']['access_key']['id']
+    access_key_secret = terminal['service_account']['access_key']['secret']
+    with open(settings.JUMPSERVER_KEY_FILE, 'w') as f:
+        f.write('{}:{}'.format(access_key_id, access_key_secret))
+

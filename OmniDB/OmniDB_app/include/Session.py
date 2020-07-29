@@ -149,7 +149,7 @@ class Session(object):
             #Reached timeout, must request password
             if not self.v_databases[p_database_index]['prompt_timeout'] or datetime.now() > self.v_databases[p_database_index]['prompt_timeout'] + timedelta(0,custom_settings.PWD_TIMEOUT_TOTAL):
                 #Try passwordless connection
-                # self.v_databases[p_database_index]['database'].v_connection.v_password = ''
+                self.v_databases[p_database_index]['database'].v_connection.v_password = ''
                 v_test = self.v_databases[p_database_index]['database'].TestConnection()
 
                 if v_test=='Connection successful.':
