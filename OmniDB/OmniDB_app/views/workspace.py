@@ -436,7 +436,8 @@ def get_database_list(request):
         'v_groups': v_groups,
         'v_remote_terminals': v_remote_terminals,
         'v_id': v_session.v_database_index,
-        'v_existing_tabs': v_existing_tabs
+        'v_existing_tabs': []
+        # 'v_existing_tabs': v_existing_tabs
     }
 
     return JsonResponse(v_return)

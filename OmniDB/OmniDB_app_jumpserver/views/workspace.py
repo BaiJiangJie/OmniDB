@@ -1,5 +1,6 @@
 import random
 import string
+import datetime
 import requests
 from django.http import HttpResponse
 from django.shortcuts import redirect
@@ -11,7 +12,7 @@ from OmniDB_app.include.Spartacus import Utils
 from OmniDB_app.include import OmniDatabase
 from OmniDB_app.views.login import sign_in_automatic
 from ..server import core_server
-
+from ..utils import get_request_ip
 
 def index(request):
     """Connect to OmniDB"""
@@ -26,30 +27,49 @@ def index(request):
     #: 校验登录状态
     cookies = {'sessionid': session_id, 'csrftoken': csrf_token}
     url = '{}{}'.format(settings.CORE_URL, '/api/v1/users/profile/')
-    res_profile = requests.get(url, cookies=cookies)
-    if res_profile.status_code != 200:
+    res_js_user_profile = requests.get(url, cookies=cookies)
+    if res_js_user_profile.status_code != 200:
         return HttpResponse('JumpServer check user failure')
+    #: 获取用户信息
+    js_user_profile = res_js_user_profile.json()
+    js_user_id = js_user_profile['id']
+    js_user_name = js_user_profile['name']
+    js_user_username = js_user_profile['username']
     #: 校验数据库权限
-    profile = res_profile.json()
-    user_id = profile['id']
-    has_permission = core_server.check_user_database_permission(user_id, database_id, system_user_id)
+    has_permission = core_server.check_user_database_permission(js_user_id, database_id, system_user_id)
     if not has_permission:
         return HttpResponse('JumpServer check user database permission failure')
 
     # 获取JumpServer相关信息
-    #: 获取用户信息
     #: 获取数据库信息
-    database_info = core_server.get_database_info(database_id)
-    if database_info is None:
+    js_database_info = core_server.get_database_info(database_id)
+    if js_database_info is None:
         return HttpResponse('JumpServer get database info failure')
+    js_database_id = js_database_info['id']
+    js_database_name = js_database_info['name']
+    js_database_type = js_database_info['type']
+    js_database_host = js_database_info['host']
+    js_database_port = js_database_info['port']
+    js_database_database = js_database_info['database']
+    js_database_org_id = js_database_info['org_id']
+
     #: 获取系统用户信息
-    system_user_info = core_server.get_system_user_info(system_user_id)
-    if system_user_info is None:
+    js_system_user_info = core_server.get_system_user_info(system_user_id)
+    if js_system_user_info is None:
         return HttpResponse('JumpServer get system user info failure')
+    js_system_user_id = js_system_user_info['id']
+    js_system_user_username = js_system_user_info['username']
+    js_system_user_protocol = js_system_user_info['protocol']
+    js_system_user_login_mode = js_system_user_info['login_mode']
+
     #: 获取系统用户、数据库应用认证信息
-    system_user_auth_info = core_server.get_system_user_auth_info(system_user_id)
-    if system_user_auth_info is None:
-        return HttpResponse('JumpServer get system user auth info failure')
+    if js_system_user_login_mode == 'auto':
+        js_system_user_auth_info = core_server.get_system_user_auth_info(system_user_id)
+        if js_system_user_auth_info is None:
+            return HttpResponse('JumpServer get system user auth info failure')
+        js_system_user_auth_password = js_system_user_auth_info['password']
+    else:
+        js_system_user_auth_password = None
 
     # 获取omnidb数据库连接
     v_omnidb_database = OmniDatabase.Generic.InstantiateDatabase(
@@ -66,9 +86,8 @@ def index(request):
     # 创建OmniDB用户
     v_cryptor = Utils.Cryptor('omnidb', 'iso-8859-1')
 
-    username = profile['username']
-    omnidb_user_username = 'js_{}'.format(username)
-    omnidb_user_password = profile['id']
+    omnidb_user_username = 'js_{}'.format(js_user_username)
+    omnidb_user_password = js_user_profile['id']
     v_user = v_omnidb_database.v_connection.ExecuteScalar('''
         select * from users where user_name='{0}'
     '''.format(omnidb_user_username))
@@ -89,15 +108,14 @@ def index(request):
     v_user = v_users.Rows[0]
     v_user_id = v_user['user_id']
 
-    omnidb_connection_dbt_st_name = database_info['type']
-    # omnidb_connection_conn_string = database_info['name']
+    omnidb_connection_dbt_st_name = js_database_type
     omnidb_connection_conn_string = ''
-    omnidb_connection_server = database_info['host']
-    omnidb_connection_port = str(database_info['port'])
-    omnidb_connection_database = database_info['database']
-    omnidb_connection_user = system_user_info['username']
-    omnidb_connection_user_password = system_user_auth_info['password']
-    omnidb_connection_alias = database_info['name']
+    omnidb_connection_server = js_database_host
+    omnidb_connection_port = str(js_database_port)
+    omnidb_connection_database = js_database_database
+    omnidb_connection_user = js_system_user_username
+    omnidb_connection_user_password = js_system_user_auth_password
+    omnidb_connection_alias = js_database_name
     omnidb_connection_ssh_server = ''
     omnidb_connection_ssh_port = '22'
     omnidb_connection_ssh_user = ''
@@ -144,7 +162,7 @@ def index(request):
         num_connections = sign_in_automatic(request, omnidb_user_username, omnidb_user_password)
         if num_connections == -1:
             return HttpResponse("Set OmniDB Session Error")
-        # 清空创建Session时，自动添加的用户相关的所有connections，下面手动添加，手动添加时，直接附上数据库用户密码
+        # 清空创建Session时自动添加的用户相关的所有connections，下面手动添加，手动添加时可以直接附上数据库用户密码
         request.session['omnidb_session'].v_databases = {}
 
     # 添加connection到用户Session中
@@ -180,6 +198,25 @@ def index(request):
     request.session['default_open_conn_id'] = conn_id
 
     # 创建JumpServer Session会话
+    js_terminal_session_data = {
+        'user': '{} ({})'.format(js_user_name, js_user_username),
+        'asset': js_database_name,
+        'org_id': js_database_org_id,
+        'login_from': 'WT',
+        'system_user': js_system_user_username,
+        'protocol': js_system_user_protocol,
+        'remote_addr': get_request_ip(request),
+        'is_finished': False,
+        'date_start': datetime.datetime.now(),
+        'date_end': None,
+        'user_id': js_user_id,
+        'asset_id': js_database_id,
+        'system_user_id': js_system_user_id,
+        'is_success': False
+    }
+    res_js_terminal_session = core_server.create_session(data=js_terminal_session_data)
+    if res_js_terminal_session is None:
+        return HttpResponse('JumpServer create terminal session failure')
 
     #: TODO 同一个浏览器打开两个Tab页面，每个Tab页面中创建多个Conn Tab，前端自动生成Conn Tab ID， 且每个浏览器Tab中的Conn Tab一致，后台存放到v_session.v_tab_connections中， 会互相替换（在最后一个打开Workspace时）, 暂时无法解决
     # 重定向workspace页面（如果直接渲染，页面会创建web socket，然后报session丢失错误，可能在浏览器设置session之前

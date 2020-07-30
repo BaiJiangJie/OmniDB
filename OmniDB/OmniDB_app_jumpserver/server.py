@@ -89,5 +89,16 @@ class Server(object):
             print(res.text)
             return False
 
+    def create_session(self, data):
+        print('Create terminal session')
+        url = '/api/v1/terminal/sessions/'
+        res = self.request('post', url, data=data)
+        if res.status_code == 201:
+            print(res.json())
+            return res.json()
+        else:
+            print(res.text)
+            return None
+
 
 core_server = Server()
