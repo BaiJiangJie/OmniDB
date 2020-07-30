@@ -85,7 +85,7 @@ def index(request):
         select * from users where user_name='{0}'
     '''.format(omnidb_user_username))
     if len(v_users.Rows) == 0:
-        return HttpResponse('OmniDB create user failure')
+        return HttpResponse('OmniDB get user failure')
     v_user = v_users.Rows[0]
     v_user_id = v_user['user_id']
 
@@ -177,10 +177,11 @@ def index(request):
         tunnel_information, omnidb_connection_alias
     )
     request.session['omnidb_session'] = v_session
-    request.session['conn_id_default_open'] = conn_id
+    request.session['default_open_conn_id'] = conn_id
 
     # 创建JumpServer Session会话
 
+    #: TODO 同一个浏览器打开两个Tab页面，每个Tab页面中创建多个Conn Tab，前端自动生成Conn Tab ID， 且每个浏览器Tab中的Conn Tab一致，后台存放到v_session.v_tab_connections中， 会互相替换（在最后一个打开Workspace时）, 暂时无法解决
     # 重定向workspace页面（如果直接渲染，页面会创建web socket，然后报session丢失错误，可能在浏览器设置session之前
     return redirect('workspace')
 

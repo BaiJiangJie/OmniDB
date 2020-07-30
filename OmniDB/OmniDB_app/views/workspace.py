@@ -118,7 +118,7 @@ def index(request):
         'tab_token': ''.join(random.choice(string.ascii_lowercase + string.digits) for i in range(20)),
         'show_terminal_option': v_show_terminal_option,
         'url_folder': settings.PATH,
-        'conn_id_default_open': request.session['conn_id_default_open']
+        'default_open_conn_id': request.session['default_open_conn_id']
     }
 
     #wiping tab connection list
