@@ -67,7 +67,6 @@ class Server(object):
         url = '/api/v1/assets/system-users/{}/auth-info/'.format(system_user_id)
         res = self.request('get', url)
         if res.status_code == 200:
-            print(res.json())
             return res.json()
         else:
             print(res.text)
