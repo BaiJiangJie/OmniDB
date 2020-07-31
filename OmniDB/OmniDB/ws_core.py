@@ -14,6 +14,7 @@ import OmniDB_app.include.Spartacus as Spartacus
 import OmniDB_app.include.Spartacus.Database as Database
 import OmniDB_app.include.Spartacus.Utils as Utils
 import OmniDB_app.include.OmniDatabase as OmniDatabase
+from JumpServer_app.server import core_server
 
 from enum import IntEnum
 from datetime import datetime
@@ -628,14 +629,14 @@ class WSHandler(tornado.websocket.WebSocketHandler):
   def on_close(self):
     try:
         #closing terminal thread
-        # 获取最新的v_session
-        v_session = SessionStore(session_key=self.v_user_key)['omnidb_session']
-
         try:
             self.terminal_thread.stop()
             self.terminal_lock.release()
         except Exception as exc:
             None
+
+        # 执行session完成处理流程
+        self.session_finished()
 
         #removing client object from list of clients
         try:
@@ -648,6 +649,61 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     except Exception:
         None
 
+  def session_finished(self):
+    """
+    执行session完成后的处理流程:
+    1. 上传录像
+    2. 更新js_session信息
+    3. 删除使用过程中生成的数据库表数据，与user_id、conn_id相关的表数据
+    4. 清除用户session(如果用户所有连接均已断开)
+    """
+    user_session = SessionStore(session_key=self.v_user_key)
+    v_session = user_session['omnidb_session']
+
+    # 更新session
+    js_session_id = v_session.js_v_connections[self.v_conn_id]['js_session_id']
+    res = core_server.finish_session(js_session_id)
+    if res is None:
+        print('更新session失败')
+    #: TODO 上传session replay录像
+
+    # 删除数据库相关信息
+    #: 删除conn_id相关的表数据
+    tables_related_conn_id = [
+        'tabs', 'cgroups_connections', 'command_list', 'units_users_connections',
+        'console_history', 'connections'
+    ]
+    for table_name in tables_related_conn_id:
+        try:
+            v_session.v_omnidb_database.v_connection.Execute('''
+              delete from {0} where conn_id={1}
+            '''.format(table_name, self.v_conn_id))
+        except Exception as e:
+            print('{} => {}'.format(table_name, e))
+
+    #: 判断当前用户是否还有其他连接未断开
+    v_connections = v_session.v_omnidb_database.v_connection.ExecuteScalar('''
+        select * from connections where user_id='{0}'
+    '''.format(v_session.v_user_id))
+    if v_connections is not None:
+        return
+
+    #: 删除user_id相关的表数据
+    tables_related_user_id = [
+        'cgroups', 'users', 'command_list', 'connections', 'console_history', 'conversions',
+        'messages_users', 'messages', 'mon_units', 'shortcuts', 'snippets_texts', 'tabs',
+        'units_users_connections', 'users'
+    ]
+    for table_name in tables_related_user_id:
+        try:
+            v_session.v_omnidb_database.v_connection.Execute('''
+              delete from {0} where user_id={1}
+            '''.format(table_name, v_session.v_user_id))
+        except Exception as e:
+            print('{} => {}'.format(table_name, e))
+
+    #: 清除用户session
+    user_session.delete()
 
   def check_origin(self, origin):
     return True

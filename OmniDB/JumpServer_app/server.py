@@ -1,4 +1,5 @@
 import os
+import datetime
 import requests
 from httpsig.requests_auth import HTTPSignatureAuth
 from OmniDB import settings
@@ -24,12 +25,6 @@ class Server(object):
             algorithm='hmac-sha256', headers=signature_headers
         )
 
-    def get(self, url, *args, **kwargs):
-        return requests.get(url, *args, **kwargs)
-
-    def post(self, url, *args, **kwargs):
-        return requests.post(url, *args, **kwargs)
-
     def request(self, method, url, *args, **kwargs):
         url = '{}{}'.format(settings.CORE_URL, url)
         kwargs.update({
@@ -37,9 +32,13 @@ class Server(object):
             'headers': self.headers
         })
         if method == 'get':
-            return self.get(url, *args, **kwargs)
+            return requests.get(url, *args, **kwargs)
         elif method == 'post':
-            return self.post(url, *args, **kwargs)
+            return requests.post(url, *args, **kwargs)
+        elif method == 'put':
+            return requests.put(url, *args, **kwargs)
+        elif method == 'patch':
+            return requests.patch(url, *args, **kwargs)
 
     def get_database_info(self, database_id):
         print('Get database info')
@@ -90,7 +89,7 @@ class Server(object):
             return False
 
     def create_session(self, data):
-        print('Create terminal session')
+        print('Create session')
         url = '/api/v1/terminal/sessions/'
         res = self.request('post', url, data=data)
         if res.status_code == 201:
@@ -99,6 +98,32 @@ class Server(object):
         else:
             print(res.text)
             return None
+
+    def update_session(self, data):
+        print('Update session')
+        url = '/api/v1/terminal/sessions/{}/'.format(data.pop('id'))
+        res = self.request('patch', url, data=data)
+        if res.status_code == 200:
+            print(res.json())
+            return res.json()
+        else:
+            print(res.text)
+            return None
+
+    def finish_session(self, session_id):
+        data = {
+            'id': session_id,
+            'is_finished': True,
+            'date_end': datetime.datetime.now(),
+        }
+        return self.update_session(data)
+
+    def finish_session_replay_upload(self, session_id):
+        data = {
+            'id': session_id,
+            'has_replay': True
+        }
+        return self.update_session(data)
 
 
 core_server = Server()

@@ -62,7 +62,7 @@ ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'OmniDB_app.apps.OmnidbAppConfig',
-    'OmniDB_app_jumpserver.apps.OmnidbAppJumpServerConfig',
+    'JumpServer_app.apps.OmnidbAppJumpServerConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
