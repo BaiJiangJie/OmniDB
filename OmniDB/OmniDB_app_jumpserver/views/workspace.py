@@ -194,11 +194,9 @@ def index(request):
         conn_id, omnidb_connection_dbt_st_name, database, False,
         tunnel_information, omnidb_connection_alias
     )
-    request.session['omnidb_session'] = v_session
-    request.session['default_open_conn_id'] = conn_id
 
     # 创建JumpServer Session会话
-    js_terminal_session_data = {
+    js_session_data = {
         'user': '{} ({})'.format(js_user_name, js_user_username),
         'asset': js_database_name,
         'org_id': js_database_org_id,
@@ -214,9 +212,19 @@ def index(request):
         'system_user_id': js_system_user_id,
         'is_success': False
     }
-    res_js_terminal_session = core_server.create_session(data=js_terminal_session_data)
-    if res_js_terminal_session is None:
+    js_session_info = core_server.create_session(data=js_session_data)
+    if js_session_info is None:
         return HttpResponse('JumpServer create terminal session failure')
+    # 获取js_session信息
+    js_session_id = js_session_info['id']
+
+    # 设置 conn_id -> js_session_id 关联关系
+    v_session.js_v_default_open_conn_id = conn_id
+    v_session.js_v_connections[conn_id] = dict([])
+    v_session.js_v_connections[conn_id]['js_session_id'] = js_session_id
+
+    # 重新设置omnidb_session值
+    request.session['omnidb_session'] = v_session
 
     #: TODO 同一个浏览器打开两个Tab页面，每个Tab页面中创建多个Conn Tab，前端自动生成Conn Tab ID， 且每个浏览器Tab中的Conn Tab一致，后台存放到v_session.v_tab_connections中， 会互相替换（在最后一个打开Workspace时）, 暂时无法解决
     # 重定向workspace页面（如果直接渲染，页面会创建web socket，然后报session丢失错误，可能在浏览器设置session之前

@@ -174,6 +174,8 @@ def thread_dispatcher(self,args,ws_object):
         #Login request
         if v_code == request.Login:
             ws_object.v_user_key = v_data
+            # 设置ws.v_conn_id值
+            ws_object.v_conn_id = json_object.get('v_conn_id')
             try:
                 v_session = SessionStore(session_key=v_data)['omnidb_session']
                 ws_object.v_session = v_session
@@ -577,6 +579,9 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     self.event_loop = tornado.ioloop.IOLoop.instance()
     spawn_thread = False
 
+    # 用于在on_close中判断被关闭的ws连接，进而判断js_session_id，便于进行之后的操作 (在ws Login时设置)
+    self.v_conn_id = None
+
     lock = threading.Lock()
     self.terminal_lock = lock
     self.terminal_lock.acquire()
@@ -623,6 +628,9 @@ class WSHandler(tornado.websocket.WebSocketHandler):
   def on_close(self):
     try:
         #closing terminal thread
+        # 获取最新的v_session
+        v_session = SessionStore(session_key=self.v_user_key)['omnidb_session']
+
         try:
             self.terminal_thread.stop()
             self.terminal_lock.release()

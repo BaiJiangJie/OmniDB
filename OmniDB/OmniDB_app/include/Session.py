@@ -60,6 +60,11 @@ class Session(object):
         self.v_csv_delimiter = p_csv_delimiter
         self.v_tab_connections = dict([])
 
+        # For JumpServer Custom Attribute
+        self.js_v_default_open_conn_id = None
+        # {conn_id: {'js_session_id': js_session_id}, {'v_conn_tab_id': v_conn_tab_id}}
+        self.js_v_connections = dict([])
+
         self.RefreshDatabaseList()
 
     def AddDatabase(self,

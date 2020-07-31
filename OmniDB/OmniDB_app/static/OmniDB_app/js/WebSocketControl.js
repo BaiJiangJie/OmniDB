@@ -153,7 +153,8 @@ function sendWebSocketMessage(p_connection, p_messageCode, p_messageData, p_erro
 					v_code: p_messageCode,
 					v_context_code: v_context_code,
 					v_error: p_error,
-					v_data: p_messageData
+					v_data: p_messageData,
+					v_conn_id: v_default_open_conn_id
 				})
 			);
 		}
