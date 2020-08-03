@@ -663,7 +663,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
     # 更新session
     js_session_id = v_session.js_v_connections[self.v_conn_id]['js_session_id']
-    print('用户断开连接: user_name: {}, conn_id: {}'.format(v_session.v_user_name, self.v_conn_id))
+    print('用户断开连接: user_name={}, conn_id={}'.format(v_session.v_user_name, self.v_conn_id))
     print('更新session信息状态(已完成)')
     res = core_server.finish_session(js_session_id)
     if res is None:
@@ -674,7 +674,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
     # 删除数据库相关信息
     #: 删除conn_id相关的表数据
-    print('清除 conn_id: {} 相关数据库表数据'.format(self.v_conn_id))
+    print('清除 conn_id={} 相关数据库表数据'.format(self.v_conn_id))
     tables_related_conn_id = [
         'tabs', 'cgroups_connections', 'command_list', 'units_users_connections',
         'console_history', 'connections'
@@ -685,22 +685,22 @@ class WSHandler(tornado.websocket.WebSocketHandler):
               delete from {0} where conn_id={1}
             '''.format(table_name, self.v_conn_id))
         except Exception as e:
-            print('清除 conn_id 数据库表数据失败: tab_name: {} => e: {}'.format(table_name, e))
+            print('清除 conn_id 数据库表数据失败: tab_name={} => e: {}'.format(table_name, e))
 
     #: 判断当前用户是否还有其他连接未断开
-    print('查询当前用户 user_id: {}, user_name: {} 剩余连接数'
+    print('查询当前用户 user_id={}, user_name={} 剩余连接数'
           ''.format(v_session.v_user_id, v_session.v_user_name))
     v_connections = v_session.v_omnidb_database.v_connection.Query('''
         select * from connections where user_id='{0}'
     '''.format(v_session.v_user_id))
-    print('当前用户 user_id: {}, user_name: {} 还存在 {} 条连接'
+    print('当前用户 user_id={}, user_name={} 还存在 {} 条连接'
           ''.format(v_session.v_user_id, v_session.v_user_name, len(v_connections.Rows)))
     if len(v_connections.Rows) != 0:
         print('用户断开连接, 执行处理流程完成')
         return
 
     #: 删除user_id相关的表数据
-    print('清除 user_id: {} 相关数据库表数据'.format(v_session.v_user_id))
+    print('清除 user_id={} 相关数据库表数据'.format(v_session.v_user_id))
     tables_related_user_id = [
         'cgroups', 'users', 'command_list', 'connections', 'console_history', 'conversions',
         'messages_users', 'messages', 'mon_units', 'shortcuts', 'snippets_texts', 'tabs',
@@ -712,10 +712,10 @@ class WSHandler(tornado.websocket.WebSocketHandler):
               delete from {0} where user_id={1}
             '''.format(table_name, v_session.v_user_id))
         except Exception as e:
-            print('清除 user_id 数据库表数据失败: tab_name: {} => e: {}'.format(table_name, e))
+            print('清除 user_id 数据库表数据失败: tab_name={} => e: {}'.format(table_name, e))
 
     #: 清除用户session
-    print('清除用户session: user_id: {}, user_name: {}, sessio_key: {}'
+    print('清除用户session: user_id={}, user_name={}, sessio_key={}'
           ''.format(v_session.v_user_id, v_session.v_user_name, user_session.session_key))
     user_session.delete()
     print('用户断开连接, 执行处理流程完成')
