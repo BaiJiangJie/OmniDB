@@ -256,10 +256,14 @@ def index(request):
     js_session_id = js_session_info['id']
     print('创建session会话成功: {}'.format(js_session_id))
 
-    # 设置 conn_id -> js_session_id 关联关系
+    # 保存jumpserver相关数据 对应 conn_id
     v_session.js_v_default_open_conn_id = conn_id
     v_session.js_v_connections[conn_id] = dict([])
-    v_session.js_v_connections[conn_id]['js_session_id'] = js_session_id
+    v_session.js_v_connections[conn_id]['js_user'] = js_user_profile
+    v_session.js_v_connections[conn_id]['js_system_user'] = js_system_user_info
+    v_session.js_v_connections[conn_id]['js_database'] = js_database_info
+    v_session.js_v_connections[conn_id]['js_session'] = js_session_info
+
 
     # 重新设置omnidb_session值
     print('重置用户session omnidb_session值')

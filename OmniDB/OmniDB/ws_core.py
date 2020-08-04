@@ -1,4 +1,4 @@
-import threading, time, datetime, json, uuid
+import threading, time, datetime, json, uuid, queue
 from concurrent.futures.thread import ThreadPoolExecutor
 import traceback
 
@@ -106,6 +106,32 @@ class debugState(IntEnum):
   Step     = 3
   Finished = 4
   Cancel   = 5
+
+
+# 命令上传Queue
+queue_cmd_upload = queue.Queue(1000)
+
+
+def start_cmd_upload_thread():
+    # TODO: 是否需要使用线程池
+    # 开启命令上传线程
+    t = threading.Thread(target=start_cmd_upload)
+    # 设置为后台运行
+    t.setDaemon(True)
+    t.start()
+
+
+def start_cmd_upload():
+    # TODO: 支持命令失败重传机制
+    while True:
+        command = queue_cmd_upload.get()
+        print('从队列中获取命令: {}'.format(command))
+        print('开始上传命令')
+        res = core_server.upload_command(command)
+        if res is None:
+            print('命令上传失败')
+        else:
+            print('命令上传成功')
 
 connection_list = dict([])
 
@@ -649,6 +675,57 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     except Exception:
         None
 
+  def parse_command_output(self, cmd_output):
+      output = ''
+      if isinstance(cmd_output, Spartacus.Database.DataTable):
+          if len(cmd_output.Columns) != 0:
+              columns = cmd_output.Columns
+              rows = cmd_output.Rows
+              output += ' | '.join(columns)
+              output += '\n'
+              for row in rows:
+                  output += ' | '.join(row)
+                  output += '\n'
+      return output
+
+  def record_command(self, cmd_input, cmd_output):
+      """
+      # 解析 cmd_output
+      # 上传（添加到上传队列）
+      # 写入录像文件
+      TODO: 目前只实现 Query 的命令记录， QueryEditData / SaveEditData / Console / ... 待实现
+      """
+      print('开始记录命令')
+      user_session = SessionStore(session_key=self.v_user_key)
+      v_session = user_session['omnidb_session']
+
+      # 解析命令输出
+      print('解析命令输出')
+      cmd_output = self.parse_command_output(cmd_output)
+
+      # 添加命令到队列
+      js_user_id = v_session.js_v_connections[self.v_conn_id]['js_user']['id']
+      js_database_id = v_session.js_v_connections[self.v_conn_id]['js_database']['id']
+      js_system_user_id = v_session.js_v_connections[self.v_conn_id]['js_system_user']['id']
+      js_session_id = v_session.js_v_connections[self.v_conn_id]['js_session']['id']
+      js_org_id = v_session.js_v_connections[self.v_conn_id]['js_session']['org_id']
+      js_command_data = {
+          'user': js_user_id,
+          'asset': js_database_id,
+          'system_user': js_system_user_id,
+          'input': cmd_input[:128],
+          'output': cmd_output[:1024],
+          'session': js_session_id,
+          'timestamp': int(time.time()),
+          'org_id': js_org_id,
+      }
+      print('添加命令到队列中: {}'.format(js_command_data))
+      queue_cmd_upload.put(js_command_data)
+
+      # TODO: 写入录像文件
+      pass
+
+
   def session_finished(self):
     """
     执行session完成后的处理流程:
@@ -662,7 +739,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     v_session = user_session['omnidb_session']
 
     # 更新session
-    js_session_id = v_session.js_v_connections[self.v_conn_id]['js_session_id']
+    js_session_id = v_session.js_v_connections[self.v_conn_id]['js_session']['id']
     print('用户断开连接: user_name={}, conn_id={}'.format(v_session.v_user_name, self.v_conn_id))
     print('更新session信息状态(已完成)')
     res = core_server.finish_session(js_session_id)
@@ -952,6 +1029,9 @@ def thread_query(self,args,ws_object):
         v_tab_title      = args['v_tab_title']
         v_autocommit     = args['v_autocommit']
 
+        #: 记录命令input
+        js_cmd_sql_input = v_sql
+
         #Removing last character if it is a semi-colon
         if v_sql[-1:]==';':
             v_sql = v_sql[:-1]
@@ -1012,6 +1092,12 @@ def thread_query(self,args,ws_object):
                 v_database.v_connection.Open()
                 v_file_name = '{0}.{1}'.format(str(time.time()).replace('.','_'),v_extension)
                 v_data1 = v_database.v_connection.QueryBlock(v_sql, 1000, False, True)
+
+                #: 记录命令output
+                js_cmd_sql_output = v_data1
+                #: 上传命令
+                ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
+
                 #if platform.system() == 'Windows':
                 #    f = Spartacus.Utils.DataFileWriter(os.path.join(v_export_dir, v_file_name), v_data1.Columns, 'windows-1252')
                 #else:
@@ -1028,6 +1114,12 @@ def thread_query(self,args,ws_object):
                     v_hasmorerecords = False
                 while v_hasmorerecords:
                     v_data1 = v_database.v_connection.QueryBlock(v_sql, 1000, False, True)
+
+                    #: 记录命令output
+                    js_cmd_sql_output = v_data1
+                    #: 上传命令
+                    ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
+
                     if v_database.v_connection.v_start:
                         f.Write(v_data1)
                         v_hasmorerecords = False
@@ -1066,6 +1158,11 @@ def thread_query(self,args,ws_object):
                 if (v_mode==0 or v_mode==1) and not v_all_data:
 
                     v_data1 = v_database.v_connection.QueryBlock(v_sql, 50, True, True)
+
+                    #: 记录命令output
+                    js_cmd_sql_output = v_data1
+                    #: 上传命令
+                    ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
                     v_notices = v_database.v_connection.GetNotices()
                     v_notices_text = ''
@@ -1109,6 +1206,11 @@ def thread_query(self,args,ws_object):
                         k = k + 1
 
                         v_data1 = v_database.v_connection.QueryBlock(v_sql, 10000, True, True)
+
+                        #: 记录命令output
+                        js_cmd_sql_output = v_data1
+                        #: 上传命令
+                        ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
                         v_notices = v_database.v_connection.GetNotices()
                         v_notices_text = ''
@@ -1225,6 +1327,11 @@ def thread_query(self,args,ws_object):
                     'v_chunks': False
                 }
                 v_response['v_error'] = True
+
+                #: 记录命令output
+                js_cmd_sql_output = str(exc)
+                #: 上传命令
+                ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
                 ws_object.event_loop.add_callback(send_response_thread_safe,ws_object,json.dumps(v_response))
 

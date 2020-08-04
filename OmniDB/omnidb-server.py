@@ -372,6 +372,9 @@ if __name__ == "__main__":
         #Websocket Core
         ws_core.start_wsserver_thread()
 
+        #: 开启一个线程处理命令上传
+        ws_core.start_cmd_upload_thread()
+
         #: 运行Django应用
         DjangoApplication().run(
             {

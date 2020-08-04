@@ -124,5 +124,18 @@ class Server(object):
         }
         return self.update_session(data)
 
+    def upload_command(self, command):
+        # TODO: 支持上传到es
+        if isinstance(command, dict):
+            command = [command]
+        url = '/api/v1/terminal/commands/'
+        res = self.request('post', url, json=command)
+        if res.status_code == 201:
+            print(res.json())
+            return res.json()
+        else:
+            print(res.text)
+            return None
+
 
 core_server = Server()

@@ -62,7 +62,16 @@ class Session(object):
 
         # For JumpServer Custom Attribute
         self.js_v_default_open_conn_id = None
-        # {conn_id: {'js_session_id': js_session_id}, {'v_conn_tab_id': v_conn_tab_id}}
+        # {
+        #     conn_id: {
+        #         'js_user': js_user,
+        #         'js_system_user': js_system_user_info,
+        #         'js_database': js_database_info,
+        #         'js_session': js_session_info,
+        #         'js_session': js_session_info,
+        #         'v_conn_tab_id': v_conn_tab_id
+        #     },
+        # }
         self.js_v_connections = dict([])
 
         self.RefreshDatabaseList()
