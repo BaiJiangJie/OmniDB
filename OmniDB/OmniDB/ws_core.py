@@ -748,13 +748,11 @@ class WSHandler(tornado.websocket.WebSocketHandler):
       print('添加命令到队列中: {}'.format(js_command_data))
       queue_cmd_upload.put(js_command_data)
 
-      # TODO: 写入录像文件
+      print('写入命令到录像文件中: {}\n{}'.format(cmd_input, cmd_output))
       timedelta = time.time() - self.replay_time_start
       self.replay_file.write('"{}":{},'.format(timedelta, json.dumps(cmd_input)))
       timedelta = time.time() - self.replay_time_start
       self.replay_file.write('"{}":{},'.format(timedelta, json.dumps(cmd_output)))
-
-
 
   def session_finished(self):
     """
