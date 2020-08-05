@@ -235,4 +235,5 @@ THREAD_POOL_MAX_WORKERS        = custom_settings.THREAD_POOL_MAX_WORKERS
 BOOTSTRAP_TOKEN                = custom_settings.BOOTSTRAP_TOKEN
 CORE_URL                       = custom_settings.CORE_URL
 JUMPSERVER_KEY_FILE            = os.path.join(PROJECT_DIR, 'data', 'key', custom_settings.JUMPSERVER_KEY_FILE_NAME)
+REPLAY_DIR                     = os.path.join(PROJECT_DIR, 'data', 'media', 'replay')
 

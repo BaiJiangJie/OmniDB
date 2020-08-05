@@ -42,6 +42,7 @@ import pexpect
 sys.path.append('OmniDB_app/include')
 from OmniDB_app.include import paramiko
 from OmniDB_app.include import custom_paramiko_expect
+from JumpServer_app.utils import gzip_file
 
 class StoppableThread(threading.Thread):
     def __init__(self,p1,p2,p3):
@@ -206,6 +207,8 @@ def thread_dispatcher(self,args,ws_object):
             try:
                 v_session = SessionStore(session_key=v_data)['omnidb_session']
                 ws_object.v_session = v_session
+                # 初始化录像变量
+                ws_object.init_replay_var()
                 v_response['v_code'] = response.LoginResult
                 ws_object.v_list_tab_objects = dict([])
                 ws_object.terminal_command_list = []
@@ -615,6 +618,29 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     self.terminal_thread = StoppableThread(thread_dispatcher_terminal_command,'',self)
     self.terminal_thread.start()
     None
+
+  def init_replay_var(self):
+      # JumpServe Need
+      if not self.v_user_key:
+          return
+      print('初始化录像变量')
+      user_session = SessionStore(session_key=self.v_user_key)
+      v_session = user_session['omnidb_session']
+      js_session_id = v_session.js_v_connections[self.v_conn_id]['js_session']['id']
+      # 打开录像文件
+      self.replay_time_start = time.time()
+      self.replay_filename = js_session_id
+      self.replay_filename_gz = '{}.replay.gz'.format(self.replay_filename)
+      date = datetime.utcnow().strftime('%Y-%m-%d')
+      replay_dir = os.path.join(settings.REPLAY_DIR, date)
+      if not os.path.isdir(replay_dir):
+          os.makedirs(replay_dir, exist_ok=True)
+      self.replay_file_path = os.path.join(replay_dir, self.replay_filename)
+      self.replay_file_path_gz = os.path.join(replay_dir, self.replay_filename_gz)
+      self.replay_upload_target = '{}/{}'.format(date, self.replay_filename_gz)
+      self.replay_file = open(self.replay_file_path, 'at')
+      self.replay_file.write('{')
+
   def on_message(self, message):
 
     try:
@@ -676,16 +702,16 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         None
 
   def parse_command_output(self, cmd_output):
-      output = ''
+      output = '\r\n'
       if isinstance(cmd_output, Spartacus.Database.DataTable):
           if len(cmd_output.Columns) != 0:
               columns = cmd_output.Columns
               rows = cmd_output.Rows
               output += ' | '.join(columns)
-              output += '\n'
+              output += '\r\n'
               for row in rows:
                   output += ' | '.join(row)
-                  output += '\n'
+                  output += '\r\n\r\n'
       return output
 
   def record_command(self, cmd_input, cmd_output):
@@ -723,7 +749,11 @@ class WSHandler(tornado.websocket.WebSocketHandler):
       queue_cmd_upload.put(js_command_data)
 
       # TODO: 写入录像文件
-      pass
+      timedelta = time.time() - self.replay_time_start
+      self.replay_file.write('"{}":{},'.format(timedelta, json.dumps(cmd_input)))
+      timedelta = time.time() - self.replay_time_start
+      self.replay_file.write('"{}":{},'.format(timedelta, json.dumps(cmd_output)))
+
 
 
   def session_finished(self):
@@ -745,9 +775,20 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     res = core_server.finish_session(js_session_id)
     if res is None:
         print('更新session信息状态(已完成)失败')
-    print('更新session信息状态(已完成)成功')
+    else:
+        print('更新session信息状态(已完成)成功')
     #: TODO 上传session replay录像
     print('上传session录像文件, 待开发')
+    self.replay_file.write('"0":""}')
+    self.replay_file.close()
+    gzip_file(self.replay_file_path, self.replay_file_path_gz)
+    res = core_server.upload_replay(self.replay_file_path_gz, js_session_id)
+    if res is None:
+        print('上传录像文件失败')
+    else:
+        core_server.finish_session_replay_upload(js_session_id)
+        os.unlink(self.replay_file_path_gz)
+        print('上传录像文件成功')
 
     # 删除数据库相关信息
     #: 删除conn_id相关的表数据

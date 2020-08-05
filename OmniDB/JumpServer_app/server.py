@@ -137,5 +137,17 @@ class Server(object):
             print(res.text)
             return None
 
+    def upload_replay(self, gzip_file, session_id):
+        url = '/api/v1/terminal/sessions/{}/replay/'.format(session_id)
+        with open(gzip_file, 'rb') as f:
+            files = {'file': f}
+            res = self.request('post', url, files=files)
+            if res.status_code == 201:
+                print(res.json())
+                return res.json()
+            else:
+                print(res.text)
+                return None
+
 
 core_server = Server()
