@@ -702,19 +702,10 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         None
 
   def parse_command_output(self, cmd_output):
-      output = '\r\n'
-      if isinstance(cmd_output, Spartacus.Database.DataTable):
-          if len(cmd_output.Columns) != 0:
-              columns = cmd_output.Columns
-              rows = cmd_output.Rows
-              output += ' | '.join(columns)
-              output += '\r\n'
-              for row in rows:
-                  output += ' | '.join(row)
-                  output += '\r\n\r\n'
-      elif isinstance(cmd_output, str):
+      output = ''
+      if isinstance(cmd_output, str):
+          cmd_output = cmd_output.replace('\n', '\r\n')
           output += cmd_output
-
       return output
 
   def record_command(self, cmd_input, cmd_output):
@@ -753,6 +744,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
       print('写入命令到录像文件中: {}\n{}'.format(cmd_input, cmd_output))
       timedelta = time.time() - self.replay_time_start
+      cmd_input = '\r\n\r\n>> {}'.format(cmd_input)
       self.replay_file.write('"{}":{},'.format(timedelta, json.dumps(cmd_input)))
       timedelta = time.time() - self.replay_time_start
       self.replay_file.write('"{}":{},'.format(timedelta, json.dumps(cmd_output)))
@@ -1136,7 +1128,7 @@ def thread_query(self,args,ws_object):
                 v_data1 = v_database.v_connection.QueryBlock(v_sql, 1000, False, True)
 
                 #: 记录命令output
-                js_cmd_sql_output = v_data1
+                js_cmd_sql_output = '\n{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
                 #: 上传命令
                 ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1158,7 +1150,7 @@ def thread_query(self,args,ws_object):
                     v_data1 = v_database.v_connection.QueryBlock(v_sql, 1000, False, True)
 
                     #: 记录命令output
-                    js_cmd_sql_output = v_data1
+                    js_cmd_sql_output = '\n{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
                     #: 上传命令
                     ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1202,7 +1194,7 @@ def thread_query(self,args,ws_object):
                     v_data1 = v_database.v_connection.QueryBlock(v_sql, 50, True, True)
 
                     #: 记录命令output
-                    js_cmd_sql_output = v_data1
+                    js_cmd_sql_output = '\n{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
                     #: 上传命令
                     ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1250,7 +1242,7 @@ def thread_query(self,args,ws_object):
                         v_data1 = v_database.v_connection.QueryBlock(v_sql, 10000, True, True)
 
                         #: 记录命令output
-                        js_cmd_sql_output = v_data1
+                        js_cmd_sql_output = '\n{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
                         #: 上传命令
                         ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1371,7 +1363,7 @@ def thread_query(self,args,ws_object):
                 v_response['v_error'] = True
 
                 #: 记录命令output
-                js_cmd_sql_output = str(exc)
+                js_cmd_sql_output = '\n{}'.format(str(exc))
                 #: 上传命令
                 ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1477,6 +1469,9 @@ def thread_console(self,args,ws_object):
                 counter = 0
                 v_show_fetch_button = False
                 for sql in list_sql:
+                    #: 记录命令input
+                    js_cmd_sql_input = sql
+
                     counter = counter + 1
                     try:
                         formated_sql = sql.strip()
@@ -1494,6 +1489,8 @@ def thread_console(self,args,ws_object):
                             v_data_return += v_notices_text
 
                         v_data_return += v_data1
+                        #: 记录命令output
+                        js_cmd_sql_output = '\n{}'.format(v_data1)
 
                         if v_database.v_use_server_cursor:
                             if v_database.v_connection.v_last_fetched_size == 50:
@@ -1511,6 +1508,12 @@ def thread_console(self,args,ws_object):
                         except Exception as exc:
                             None
                         v_data_return += str(exc)
+                        #: 记录命令output
+                        js_cmd_sql_output = '\n{}'.format(str(exc))
+
+                    # 记录命令
+                    ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
+
                     v_tab_object['remaining_commands'] = []
 
             log_end_time = datetime.now()
