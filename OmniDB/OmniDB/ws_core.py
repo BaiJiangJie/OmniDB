@@ -712,6 +712,9 @@ class WSHandler(tornado.websocket.WebSocketHandler):
               for row in rows:
                   output += ' | '.join(row)
                   output += '\r\n\r\n'
+      elif isinstance(cmd_output, str):
+          output += cmd_output
+
       return output
 
   def record_command(self, cmd_input, cmd_output):
