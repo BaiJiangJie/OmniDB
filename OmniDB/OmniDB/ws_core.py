@@ -701,6 +701,13 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     except Exception:
         None
 
+  def parse_command_input(self, cmd_input):
+      input = ''
+      if isinstance(cmd_input, str):
+          cmd_input = cmd_input.replace('\n', '\r\n')
+          input = cmd_input
+      return input
+
   def parse_command_output(self, cmd_output):
       output = ''
       if isinstance(cmd_output, str):
@@ -721,7 +728,9 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
       # 解析命令输出
       print('解析命令输出')
+      cmd_input = self.parse_command_input(cmd_input)
       cmd_output = self.parse_command_output(cmd_output)
+
 
       # 添加命令到队列
       js_user_id = v_session.js_v_connections[self.v_conn_id]['js_user']['id']
@@ -1718,6 +1727,9 @@ def thread_query_edit_data(self,args,ws_object):
         v_session = ws_object.v_session
         v_database = args['v_database']
 
+        #: 记录命令input
+        js_cmd_sql_input = ''
+
         try:
             if v_database.v_has_schema:
                 v_table_name = v_schema + '.' + v_table
@@ -1732,7 +1744,14 @@ def thread_query_edit_data(self,args,ws_object):
                 v_first = False
                 v_column_list = v_column_list + v_column['v_readformat'].replace('#', v_column['v_column'])
 
+            #: 记录命令input
+            js_cmd_sql_input = v_database.QueryTableRecordsSQL(v_column_list, v_table_name, v_filter, v_count)
+            #: 执行sql命令
             v_data1 = v_database.QueryTableRecords(v_column_list, v_table_name, v_filter, v_count)
+            #: 记录命令output
+            js_cmd_sql_output = '\n{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
+            #: 记录命令
+            ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
             v_response['v_data']['v_query_info'] = 'Number of records: ' + str(len(v_data1.Rows))
 
@@ -1755,6 +1774,10 @@ def thread_query_edit_data(self,args,ws_object):
         except Exception as exc:
             v_response['v_data'] = str(exc)
             v_response['v_error'] = True
+            #: 记录命令output
+            js_cmd_sql_output = '\n{}'.format(str(exc))
+            #: 记录命令
+            ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
         if not self.cancel:
             ws_object.event_loop.add_callback(send_response_thread_safe,ws_object,json.dumps(v_response))
