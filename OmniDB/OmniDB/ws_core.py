@@ -396,6 +396,7 @@ def thread_dispatcher(self,args,ws_object):
 
                         #Query request
                         if v_code == request.Query:
+                            #: 已添加命令记录
                             tab_object['tab_db_id'] = v_data['v_tab_db_id']
                             v_data['v_tab_object'] = tab_object
                             t = StoppableThread(thread_query,v_data,ws_object)
@@ -409,6 +410,7 @@ def thread_dispatcher(self,args,ws_object):
 
                         #Console request
                         if v_code == request.Console:
+                            #: 已添加命令记录
                             v_data['v_tab_object'] = tab_object
                             t = StoppableThread(thread_console,v_data,ws_object)
                             tab_object['thread'] = t
@@ -420,6 +422,7 @@ def thread_dispatcher(self,args,ws_object):
 
                         #Query edit data
                         elif v_code == request.QueryEditData:
+                            #: 已添加命令记录
                             t = StoppableThread(thread_query_edit_data,v_data,ws_object)
                             tab_object['thread'] = t
                             tab_object['type'] = 'edit'
@@ -428,6 +431,7 @@ def thread_dispatcher(self,args,ws_object):
 
                         #Save edit data
                         elif v_code == request.SaveEditData:
+                            #: 已添加命令记录
                             t = StoppableThread(thread_save_edit_data,v_data,ws_object)
                             tab_object['thread'] = t
                             tab_object['type'] = 'edit'
@@ -435,6 +439,8 @@ def thread_dispatcher(self,args,ws_object):
                             t.start()
                         #Query Advanced Object Search
                         elif v_code == request.AdvancedObjectSearch:
+                            #: 未添加命令记录
+                            # TODO: 是否需记录命令(尚未尚未找到页面操作入口)
                             v_response = {
                                 'v_code': response.AdvancedObjectSearchResult,
                                 'v_context_code': v_data['v_context_code'],
@@ -499,6 +505,8 @@ def thread_dispatcher(self,args,ws_object):
 
                     #Debugger
                     elif v_code == request.Debug:
+                        #: 未添加命令记录
+                        # TODO: 是否需记录命令(尚未尚未找到页面操作入口)
 
                         #New debugger, create connections
                         if v_data['v_state'] == debugState.Starting:
