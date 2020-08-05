@@ -709,7 +709,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
       return input
 
   def parse_command_output(self, cmd_output):
-      output = ''
+      output = '\r\n'
       if isinstance(cmd_output, str):
           cmd_output = cmd_output.replace('\n', '\r\n')
           output += cmd_output
@@ -1137,7 +1137,7 @@ def thread_query(self,args,ws_object):
                 v_data1 = v_database.v_connection.QueryBlock(v_sql, 1000, False, True)
 
                 #: 记录命令output
-                js_cmd_sql_output = '\n{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
+                js_cmd_sql_output = '{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
                 #: 上传命令
                 ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1159,7 +1159,7 @@ def thread_query(self,args,ws_object):
                     v_data1 = v_database.v_connection.QueryBlock(v_sql, 1000, False, True)
 
                     #: 记录命令output
-                    js_cmd_sql_output = '\n{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
+                    js_cmd_sql_output = '{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
                     #: 上传命令
                     ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1203,7 +1203,7 @@ def thread_query(self,args,ws_object):
                     v_data1 = v_database.v_connection.QueryBlock(v_sql, 50, True, True)
 
                     #: 记录命令output
-                    js_cmd_sql_output = '\n{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
+                    js_cmd_sql_output = '{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
                     #: 上传命令
                     ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1251,7 +1251,7 @@ def thread_query(self,args,ws_object):
                         v_data1 = v_database.v_connection.QueryBlock(v_sql, 10000, True, True)
 
                         #: 记录命令output
-                        js_cmd_sql_output = '\n{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
+                        js_cmd_sql_output = '{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
                         #: 上传命令
                         ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1372,7 +1372,7 @@ def thread_query(self,args,ws_object):
                 v_response['v_error'] = True
 
                 #: 记录命令output
-                js_cmd_sql_output = '\n{}'.format(str(exc))
+                js_cmd_sql_output = '{}'.format(str(exc))
                 #: 上传命令
                 ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1499,7 +1499,7 @@ def thread_console(self,args,ws_object):
 
                         v_data_return += v_data1
                         #: 记录命令output
-                        js_cmd_sql_output = '\n{}'.format(v_data1)
+                        js_cmd_sql_output = '{}'.format(v_data1)
 
                         if v_database.v_use_server_cursor:
                             if v_database.v_connection.v_last_fetched_size == 50:
@@ -1518,7 +1518,7 @@ def thread_console(self,args,ws_object):
                             None
                         v_data_return += str(exc)
                         #: 记录命令output
-                        js_cmd_sql_output = '\n{}'.format(str(exc))
+                        js_cmd_sql_output = '{}'.format(str(exc))
 
                     # 记录命令
                     ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
@@ -1749,7 +1749,7 @@ def thread_query_edit_data(self,args,ws_object):
             #: 执行sql命令
             v_data1 = v_database.QueryTableRecords(v_column_list, v_table_name, v_filter, v_count)
             #: 记录命令output
-            js_cmd_sql_output = '\n{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
+            js_cmd_sql_output = '{}'.format(v_data1.Pretty(v_database.v_connection.v_expanded))
             #: 记录命令
             ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1775,7 +1775,7 @@ def thread_query_edit_data(self,args,ws_object):
             v_response['v_data'] = str(exc)
             v_response['v_error'] = True
             #: 记录命令output
-            js_cmd_sql_output = '\n{}'.format(str(exc))
+            js_cmd_sql_output = '{}'.format(str(exc))
             #: 记录命令
             ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
@@ -1858,6 +1858,12 @@ def thread_save_edit_data(self,args,ws_object):
                     v_row_info_return['v_message'] = str(exc)
 
                 v_response['v_data'].append(v_row_info_return)
+                #: 记录命令input
+                js_cmd_sql_input = v_command
+                #: 记录命令output
+                js_cmd_sql_output = '{}'.format(v_row_info_return['v_message'])
+                #: 记录命令
+                ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
             # Inserting new row
             elif v_row_info['mode'] == 2:
@@ -1907,6 +1913,12 @@ def thread_save_edit_data(self,args,ws_object):
                     v_row_info_return['v_message'] = str(exc)
 
                 v_response['v_data'].append(v_row_info_return)
+                #: 记录命令input
+                js_cmd_sql_input = v_command
+                #: 记录命令output
+                js_cmd_sql_output = '{}'.format(v_row_info_return['v_message'])
+                #: 记录命令
+                ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
             # Updating existing row
             elif v_row_info['mode'] == 1:
@@ -1966,6 +1978,12 @@ def thread_save_edit_data(self,args,ws_object):
                     v_row_info_return['v_message'] = str(exc)
 
                 v_response['v_data'].append(v_row_info_return)
+                #: 记录命令input
+                js_cmd_sql_input = v_command
+                #: 记录命令output
+                js_cmd_sql_output = '{}'.format(v_row_info_return['v_message'])
+                #: 记录命令
+                ws_object.record_command(js_cmd_sql_input, js_cmd_sql_output)
 
             i = i + 1
 
