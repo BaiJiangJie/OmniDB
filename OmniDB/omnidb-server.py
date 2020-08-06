@@ -48,6 +48,9 @@ parser.add_option("-P", "--path", dest="path",
                   default='', type=str,
                   help="path to access the application, other than /")
 
+#: JIANGJIE ANNOTATION :#
+#: options: {'host': None, 'port': None, 'wsport': 3333, 'ewsport': None, 'homedir': '', 'conf': '', 'app': False, 'path': ''}
+#: args: ['aaa']
 (options, args) = parser.parse_args()
 
 #Generate random token if in app mode
@@ -58,6 +61,9 @@ if options.app:
 else:
     app_version = False
 
+#: JIANGJIE ANNOTATION :#
+#: 设置项目的HOME_DIR
+#: TODO: JumpServer需要指定HOME_DIR，比如 /opt/omnidb/
 if options.homedir!='':
     if not os.path.exists(options.homedir):
         print("Home directory does not exist. Please specify a directory that exists.",flush=True)
@@ -66,9 +72,13 @@ if options.homedir!='':
         OmniDB.custom_settings.HOME_DIR = options.homedir
 
 
+#: JIANGJIE ANNOTATION :#
+#: 设置完custom_settings后再进行导入runtime_settings，用于创建HOME_DIR目录
 #importing runtime settings after setting HOME_DIR and other required parameters
 import OmniDB.runtime_settings
 
+#: JIANGJIE ANNOTATION :#
+#: 获取项目配置文件路径
 if options.conf!='':
     if not os.path.exists(options.conf):
         print("Config file not found, using default settings.",flush=True)
@@ -78,10 +88,17 @@ if options.conf!='':
 else:
     config_file = OmniDB.runtime_settings.CONFFILE
 
+#: JIANGJIE ANNOTATION :#
+#: 解析配置文件内容
 #Parsing config file
 Config = configparser.ConfigParser()
 Config.read(config_file)
 
+#: JIANGJIE ANNOTATION :#
+#: 设置项目启动所需的变量
+#: 1. 启动脚本所指参数
+#: 2. 配置文件所指参数(omnidb.conf)
+#: 3. custom_settings所指参数
 if options.host!=None:
     listening_address = options.host
 else:
@@ -149,6 +166,8 @@ try:
 except:
     pass
 
+#: JIANGJIE ANNOTATION :#
+#: 等待 HOST_DIR、custom_settings 中的参数设置完成后，再导入项目的 Django settings 文件
 #importing settings after setting HOME_DIR and other required parameters
 import OmniDB.settings
 
@@ -157,6 +176,8 @@ import logging.config
 
 logger = logging.getLogger('OmniDB_app.Init')
 
+#: JIANGJIE ANNOTATION :#
+#: 设置项目的 Django settings 文件
 #Configuring Django settings before loading them
 OmniDB.settings.DEBUG = False
 if is_ssl:
@@ -175,11 +196,19 @@ if is_ssl:
         logger.info("Key file not found. Please specify a file that exists.")
         sys.exit()
 
+#: JIANGJIE ANNOTATION :#
+#: TODO: 这里是否需要设定JumpServer_app自己的配置文件，按照项目的思路管理配置项
+#: 比如 import JumpServer_app.js_settings
 import OmniDB
 import OmniDB_app
 import OmniDB_app.apps
+#: JIANGJIE ANNOTATION :#
+#: 动态设置DJANGO_SETTINGS_MODULE变量，Django本身支持的配置文件设置方式
 os.environ['DJANGO_SETTINGS_MODULE'] = 'OmniDB.settings'
 import django
+#: JIANGJIE ANNOTATION :#
+#: 单独运行Django应用时，需要手动调用django.setup()方法
+#: Calling django.setup() is required for “standalone” Django usage
 django.setup()
 import html.parser
 import http.cookies
