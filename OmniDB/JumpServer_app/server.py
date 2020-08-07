@@ -150,4 +150,5 @@ class Server(object):
                 return None
 
 
-core_server = Server()
+# core_server = Server()
+core_server = None

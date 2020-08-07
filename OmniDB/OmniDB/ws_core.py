@@ -14,7 +14,8 @@ import OmniDB_app.include.Spartacus as Spartacus
 import OmniDB_app.include.Spartacus.Database as Database
 import OmniDB_app.include.Spartacus.Utils as Utils
 import OmniDB_app.include.OmniDatabase as OmniDatabase
-from JumpServer_app.server import core_server
+# from JumpServer_app.server import core_server
+import JumpServer_app.server as Core_Service
 
 from enum import IntEnum
 from datetime import datetime
@@ -128,7 +129,7 @@ def start_cmd_upload():
         command = queue_cmd_upload.get()
         print('从队列中获取命令: {}'.format(command))
         print('开始上传命令')
-        res = core_server.upload_command(command)
+        res = Core_Service.core_server.upload_command(command)
         if res is None:
             print('命令上传失败')
         else:
@@ -782,21 +783,21 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     js_session_id = v_session.js_v_connections[self.v_conn_id]['js_session']['id']
     print('用户断开连接: user_name={}, conn_id={}'.format(v_session.v_user_name, self.v_conn_id))
     print('更新session信息状态(已完成)')
-    res = core_server.finish_session(js_session_id)
+    res = Core_Service.core_server.finish_session(js_session_id)
     if res is None:
         print('更新session信息状态(已完成)失败')
     else:
         print('更新session信息状态(已完成)成功')
     #: TODO 上传session replay录像
-    print('上传session录像文件, 待开发')
+    # print('上传session录像文件, 待开发')
     self.replay_file.write('"0":""}')
     self.replay_file.close()
     gzip_file(self.replay_file_path, self.replay_file_path_gz)
-    res = core_server.upload_replay(self.replay_file_path_gz, js_session_id)
+    res = Core_Service.core_server.upload_replay(self.replay_file_path_gz, js_session_id)
     if res is None:
         print('上传录像文件失败')
     else:
-        core_server.finish_session_replay_upload(js_session_id)
+        Core_Service.core_server.finish_session_replay_upload(js_session_id)
         os.unlink(self.replay_file_path_gz)
         print('上传录像文件成功')
 

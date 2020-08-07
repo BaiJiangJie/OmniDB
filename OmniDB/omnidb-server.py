@@ -308,6 +308,10 @@ class DjangoApplication(object):
             #: 注册JumpServer Terminal
             startup.registry_terminal()
 
+            #: 设置core_server
+            import JumpServer_app.server
+            JumpServer_app.server.core_server = JumpServer_app.server.Server()
+
             #: 开启Cherrypy Web服务
             cherrypy.engine.start()
 

@@ -12,6 +12,7 @@ from OmniDB_app.include.Spartacus import Utils
 from OmniDB_app.include import OmniDatabase
 from OmniDB_app.views.login import sign_in_automatic
 from ..server import core_server
+import JumpServer_app.server as Core_Service
 from ..utils import get_request_ip
 
 def index(request):
@@ -41,7 +42,7 @@ def index(request):
     js_user_username = js_user_profile['username']
     #: 校验数据库权限
     print('校验用户数据库权限: user_id: {}, database_id: {}, system_user_id: {}'.format(js_user_id, database_id, system_user_id))
-    has_permission = core_server.check_user_database_permission(js_user_id, database_id, system_user_id)
+    has_permission = Core_Service.core_server.check_user_database_permission(js_user_id, database_id, system_user_id)
     if not has_permission:
         error = '校验用户数据库权限失败'
         print(error)
@@ -51,7 +52,7 @@ def index(request):
     # 获取JumpServer相关信息
     #: 获取数据库信息
     print('获取数据库信息: database_id: {}'.format(database_id))
-    js_database_info = core_server.get_database_info(database_id)
+    js_database_info = Core_Service.core_server.get_database_info(database_id)
     if js_database_info is None:
         error = '获取数据库信息失败'
         print(error)
@@ -67,7 +68,7 @@ def index(request):
 
     #: 获取系统用户信息
     print('获取系统用户信息: system_user_id: {}'.format(system_user_id))
-    js_system_user_info = core_server.get_system_user_info(system_user_id)
+    js_system_user_info = Core_Service.core_server.get_system_user_info(system_user_id)
     if js_system_user_info is None:
         error = '获取系统用户信息失败'
         print(error)
@@ -83,7 +84,7 @@ def index(request):
     print('获取系统用户登录方式: {}'.format(js_system_user_login_mode))
     if js_system_user_login_mode == 'auto':
         print('获取系统用户认证信息: system_user_id: {}'.format(system_user_id))
-        js_system_user_auth_info = core_server.get_system_user_auth_info(system_user_id)
+        js_system_user_auth_info = Core_Service.core_server.get_system_user_auth_info(system_user_id)
         if js_system_user_auth_info is None:
             error = '获取系统用户认证信息失败'
             print(error)
@@ -144,7 +145,9 @@ def index(request):
     omnidb_connection_database = js_database_database
     omnidb_connection_user = js_system_user_username
     omnidb_connection_user_password = js_system_user_auth_password
-    omnidb_connection_alias = js_database_name
+    # 不支持中文
+    # omnidb_connection_alias = js_database_name
+    omnidb_connection_alias = ''
     omnidb_connection_ssh_server = ''
     omnidb_connection_ssh_port = '22'
     omnidb_connection_ssh_user = ''
@@ -247,7 +250,7 @@ def index(request):
         'system_user_id': js_system_user_id,
         'is_success': False
     }
-    js_session_info = core_server.create_session(data=js_session_data)
+    js_session_info = Core_Service.core_server.create_session(data=js_session_data)
     if js_session_info is None:
         error = '创建session会话失败'
         print(error)

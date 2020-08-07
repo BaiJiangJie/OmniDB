@@ -1,3 +1,4 @@
+import logging
 from . import user_database
 from . import settings
 import os
@@ -7,6 +8,8 @@ import OmniDB_app.include.Spartacus as Spartacus
 import OmniDB_app.include.Spartacus.Database as Database
 import OmniDB_app.include.Spartacus.Utils as Utils
 import OmniDB_app.include.OmniDatabase as OmniDatabase
+
+logger = logging.getLogger(__file__)
 
 def clean_temp_folder(p_all_files = False):
     v_temp_folder = settings.TEMP_DIR
@@ -40,23 +43,29 @@ def startup_procedure():
 
 def registry_terminal():
     if os.path.exists(settings.JUMPSERVER_KEY_FILE):
-        print('Terminal registered')
+        logger.info('Terminal registered.')
         return
 
+    logger.info('Start registration terminal')
     res_terminal = requests.post(
         url='{}{}'.format(settings.CORE_URL, '/api/v2/terminal/terminal-registrations/'),
-        data={'name': '[OmniDB] bai'},
+        data={'name': '[OmniDB] Bai-MBP-01'},
         headers={
             'Authorization': 'BootstrapToken {}'.format(settings.BOOTSTRAP_TOKEN),
             'X-JMS-ORG': 'ROOT'
         },
     )
     if res_terminal.status_code != 201:
+        logger.error('Registration terminal failure: {}'.format(res_terminal.text))
         return False
 
     terminal = res_terminal.json()
+    logger.info('Registration terminal success: {}'.format(terminal))
     access_key_id = terminal['service_account']['access_key']['id']
     access_key_secret = terminal['service_account']['access_key']['secret']
+    key_dir = os.path.dirname(settings.JUMPSERVER_KEY_FILE)
+    if not os.path.isdir(key_dir):
+        os.makedirs(key_dir, exist_ok=True)
     with open(settings.JUMPSERVER_KEY_FILE, 'w') as f:
         f.write('{}:{}'.format(access_key_id, access_key_secret))
 
