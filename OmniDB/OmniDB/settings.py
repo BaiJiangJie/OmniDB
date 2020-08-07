@@ -160,6 +160,9 @@ SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
 
 #OMNIDB LOGGING
 
+#: JIANGJIE ANNOTATION :#
+#: TODO: 添加jumpserver_app应用的日志配置项
+#: TODO: DEEP NEED
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

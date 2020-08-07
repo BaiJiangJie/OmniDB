@@ -555,6 +555,10 @@ def thread_dispatcher_terminal_command(self,args,ws_object):
                 break
 
 def thread_client_control(self,args,object):
+    """
+    #: JIANGJIE ANNOTATION :#
+    #: 定时清除/关闭超时未响应的 Websocket Client
+    """
     message = args
 
     while True:
@@ -656,6 +660,8 @@ def start_wsserver():
     logger.info('''*** Starting OmniDB ***''')
 
     try:
+        #: JIANGJIE ANNOTATION :#
+        #: 创建 tornado web 应用对象
         application = tornado.web.Application([
           (r'' + settings.PATH + '/ws', WSHandler),
           (r'' + settings.PATH + '/wss',WSHandler),
@@ -671,13 +677,25 @@ def start_wsserver():
                                    settings.SSL_KEY)
             server = tornado.httpserver.HTTPServer(application, ssl_options=ssl_ctx)
         else:
+            #: JIANGJIE ANNOTATION :#
+            #: 创建 tornado http server 服务对象
             server = tornado.httpserver.HTTPServer(application)
 
+        #: JIANGJIE ANNOTATION :#
+        #: 开启线程: 定时清除本地保存的未响应的websocket client对象
         #Start thread that controls clients
         thread_clients = StoppableThread(thread_client_control,None,None)
         thread_clients.start()
 
+        #: JIANGJIE ANNOTATION :#
+        #: 设置 event loop policy 为 tornado AnyThreadEventLoopPolicy , 以便能够在任何线程中创建 event loop
+        #: TODO: DEEP NEED
         asyncio.set_event_loop_policy(AnyThreadEventLoopPolicy())
+
+        #: JIANGJIE ANNOTATION :#
+        #: 设置Websocket Server监听的地址和端口
+        #: 启动Websocket Server服务
+        #: TODO: DEEP NEED
         server.listen(settings.OMNIDB_WEBSOCKET_PORT,address=settings.OMNIDB_ADDRESS)
         tornado.ioloop.IOLoop.instance().start()
 

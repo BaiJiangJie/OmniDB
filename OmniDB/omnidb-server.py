@@ -268,11 +268,22 @@ class DjangoApplication(object):
     def run(self,parameters):
         #cherrypy.engine.unsubscribe('graceful', cherrypy.log.reopen_files)
 
+        #: JIANGJIE ANNOTATION :#
+        #: 配置logging对象
         logging.config.dictConfig(OmniDB.settings.LOGGING)
+
+        #: JIANGJIE ANNOTATION :#
+        #: 禁用cherrypy的访问日志
         #cherrypy.log.error_log.propagate = False
         cherrypy.log.access_log.propagate = False
+
+        #: JIANGJIE ANNOTATION :#
+        #: 挂载cherrypy静态文件目录
         self.mount_static(OmniDB.settings.STATIC_URL, OmniDB.settings.STATIC_ROOT)
 
+        #: JIANGJIE ANNOTATION :#
+        #: 设置cherrypy的WSGI处理器
+        #: TODO: DEEP NEED
         cherrypy.tree.graft(WSGIHandler())
 
         port = parameters['listening_port']
@@ -283,6 +294,8 @@ class DjangoApplication(object):
         print('''Checking port availability...''',flush=True)
         logger.info('''Checking port availability...''')
 
+        #: JIANGJIE ANNOTATION :#
+        #: 获取 Web Server 可用端口
         while not check_port(port) or num_attempts >= 20:
             print("Port {0} is busy, trying another port...".format(port),flush=True)
             logger.info("Port {0} is busy, trying another port...".format(port))
@@ -312,14 +325,20 @@ class DjangoApplication(object):
                 v_cherrypy_config['server.ssl_private_key'] = parameters['ssl_key_file']
                 v_cherrypy_config['server.ssl_context'] = ssl_ctx
 
+            #: JIANGJIE ANNOTATION :#
+            #: 更新cherrypy配置参数
             cherrypy.config.update(v_cherrypy_config)
 
             print ("Starting server {0} at {1}:{2}{3}.".format(OmniDB.settings.OMNIDB_VERSION,parameters['listening_address'],str(port),OmniDB.settings.PATH),flush=True)
             logger.info("Starting server {0} at {1}:{2}.".format(OmniDB.settings.OMNIDB_VERSION,parameters['listening_address'],str(port)))
 
+            #: JIANGJIE ANNOTATION :#
+            #: 启动程序: 处理用户数据库、应用数据库、临时文件、session信息
             # Startup
             startup.startup_procedure()
 
+            #: JIANGJIE ANNOTATION :#
+            #: 启动Web Server
             cherrypy.engine.start()
 
             if not app_version:
@@ -331,7 +350,10 @@ class DjangoApplication(object):
                 print ("http://localhost:{0}/login/?user=admin&pwd=admin&token={1}".format(str(port),OmniDB.custom_settings.APP_TOKEN),flush=True)
 
 
+            #: JIANGJIE ANNOTATIONO :#
+            #: 阻塞
             cherrypy.engine.block()
+            #: 退出
             cherrypy.engine.exit()
         else:
             print('Tried 20 different ports without success, closing...',flush=True)
@@ -348,6 +370,8 @@ if __name__ == "__main__":
     print('''Checking port availability...''',flush=True)
     logger.info('''Checking port availability...''')
 
+    #: JIANGJIE ANNOTATION :#
+    #: 获取Web Socket Server 可用的端口
     while not check_port(port) or num_attempts_port >= 20:
         print("Port {0} is busy, trying another port...".format(port),flush=True)
         logger.info("Port {0} is busy, trying another port...".format(port))
@@ -355,6 +379,8 @@ if __name__ == "__main__":
         num_attempts_port = num_attempts_port + 1
 
     if num_attempts_port < 20:
+        #: JIANGJIE ANNOTATION :#
+        #: 设置最终的Django settings配置选项 :#
         OmniDB.settings.OMNIDB_WEBSOCKET_PORT          = port
         if ews_port==None:
             OmniDB.settings.OMNIDB_EXTERNAL_WEBSOCKET_PORT = port
@@ -370,11 +396,18 @@ if __name__ == "__main__":
         print ("Starting websocket server at port {0}.".format(str(port)),flush=True)
         logger.info("Starting websocket server at port {0}.".format(str(port)))
 
+        #: JIANGJIE ANNOTATION :#
+        #: 清除过期Session
         #Removing Expired Sessions
         SessionStore.clear_expired()
 
+        #: JIANGJIE ANNOTATION :#
+        #: 开启WebSocket Server: tornado + asyncio
         #Websocket Core
         ws_core.start_wsserver_thread()
+
+        #: JIANGJIE ANNOTATION :#
+        #: 启动Web Server: cherrypy + Django.WSGIHandler
         DjangoApplication().run(
             {
                 'listening_address'   : listening_address,

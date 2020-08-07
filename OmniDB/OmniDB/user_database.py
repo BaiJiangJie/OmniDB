@@ -64,6 +64,10 @@ def migrate(p_database, p_current_version):
         return False
 
 def work():
+    """
+    #: JIANGJIE ANNOTATION :#
+    #: 执行omnidb数据库(omnidb.db)的版本检测、备份、迁移、升级
+    """
     database = OmniDatabase.Generic.InstantiateDatabase('sqlite','','',settings.OMNIDB_DATABASE,'','','0','',p_foreignkeys=False)
     current_version = get_current_version(database)
     if current_version != settings.OMNIDB_SHORT_VERSION:

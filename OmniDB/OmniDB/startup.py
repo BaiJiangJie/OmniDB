@@ -21,9 +21,15 @@ def clean_temp_folder(p_all_files = False):
             pass
 
 def startup_procedure():
+    #: JIANGJIE ANNOTATION :#
+    #: 执行用户数据库的版本检测、备份、升级、升级
     user_database.work()
+    #: JIANGJIE ANNOTATION :#
+    #: 清除临时文件
     clean_temp_folder(True)
 
+    #: JIANGJIE ANNOTATION :#
+    #: 清空应用数据库django_session表
     #removing existing sessions
     database_sessions = OmniDatabase.Generic.InstantiateDatabase(
         'sqlite','','',settings.SESSION_DATABASE,'','','0',''
