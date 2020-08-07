@@ -117,7 +117,8 @@ def index(request):
         'shortcuts': shortcut_object,
         'tab_token': ''.join(random.choice(string.ascii_lowercase + string.digits) for i in range(20)),
         'show_terminal_option': v_show_terminal_option,
-        'url_folder': settings.PATH
+        'url_folder': settings.PATH,
+        'default_open_conn_id': v_session.js_v_default_open_conn_id,
     }
 
     #wiping tab connection list
@@ -435,7 +436,8 @@ def get_database_list(request):
         'v_groups': v_groups,
         'v_remote_terminals': v_remote_terminals,
         'v_id': v_session.v_database_index,
-        'v_existing_tabs': v_existing_tabs
+        'v_existing_tabs': []
+        # 'v_existing_tabs': v_existing_tabs
     }
 
     return JsonResponse(v_return)
@@ -479,6 +481,8 @@ def change_active_database(request):
     v_database_new.v_connection.v_service = v_data;
 
     v_session.v_tab_connections[v_tab_id] = v_database_new
+    # 设置 conn_id -> js_session_id & v_conn_tab_id 关联关系
+    v_session.js_v_connections[v_database_index]['v_conn_tab_id'] = v_tab_id
 
     request.session['omnidb_session'] = v_session
 

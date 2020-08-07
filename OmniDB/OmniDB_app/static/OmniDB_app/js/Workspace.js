@@ -186,7 +186,8 @@ function getDatabaseList(p_init, p_callback) {
 
 						for (var i=0; i < p_return.v_data.v_existing_tabs.length; i++) {
 							if (v_current_parent == null || v_current_parent != p_return.v_data.v_existing_tabs[i].index) {
-								v_connTabControl.tag.createConnTab(p_return.v_data.v_existing_tabs[i].index,false);
+								v_connTabControl.tag.createConnTab(v_default_open_conn_id);
+								// v_connTabControl.tag.createConnTab(p_return.v_data.v_existing_tabs[i].index,false);
 								v_connTabControl.tag.createConsoleTab();
 							}
 
@@ -199,7 +200,8 @@ function getDatabaseList(p_init, p_callback) {
 						}
 
 						if (!v_has_old_tabs)
-							v_connTabControl.tag.createConnTab(v_connTabControl.tag.connections[0].v_conn_id);
+							v_connTabControl.tag.createConnTab(v_default_open_conn_id);
+							//v_connTabControl.tag.createConnTab(v_connTabControl.tag.connections[0].v_conn_id);
 
 					}
 					else {

@@ -510,6 +510,14 @@ class MariaDB:
         else:
             return self.v_connection.Query(p_query, True)
 
+    def QueryTableRecordsSQL(self, p_column_list, p_table, p_filter, p_count=-1):
+        v_limit = ''
+        if p_count != -1:
+            v_limit = ' limit ' + p_count
+        return '''select * from ( select {0} from {1} t {2} ) t {3}'''.format(
+            p_column_list, p_table, p_filter, v_limit
+        )
+
     def QueryTableRecords(self, p_column_list, p_table, p_filter, p_count=-1):
         v_limit = ''
         if p_count != -1:

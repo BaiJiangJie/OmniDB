@@ -25,6 +25,7 @@ DEV_MODE = custom_settings.DEV_MODE
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMP_DIR = os.path.join(BASE_DIR,'OmniDB_app','static','temp')
+PROJECT_DIR = os.path.dirname(BASE_DIR)
 
 PLUGINS_DIR = os.path.join(BASE_DIR,'OmniDB_app','plugins')
 PLUGINS_STATIC_DIR = os.path.join(BASE_DIR,'OmniDB_app','static','plugins')
@@ -61,6 +62,7 @@ ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'OmniDB_app.apps.OmnidbAppConfig',
+    'JumpServer_app.apps.OmnidbAppJumpServerConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -228,3 +230,11 @@ CH_CMDS_PER_PAGE               = 20
 PWD_TIMEOUT_TOTAL              = custom_settings.PWD_TIMEOUT_TOTAL
 PWD_TIMEOUT_REFRESH            = 300
 THREAD_POOL_MAX_WORKERS        = custom_settings.THREAD_POOL_MAX_WORKERS
+
+
+DATA_DIR                       = os.path.dirname(HOME_DIR)
+BOOTSTRAP_TOKEN                = custom_settings.BOOTSTRAP_TOKEN
+CORE_URL                       = custom_settings.CORE_URL
+JUMPSERVER_KEY_FILE            = os.path.join(DATA_DIR, 'key', custom_settings.JUMPSERVER_KEY_FILE_NAME)
+REPLAY_DIR                     = os.path.join(DATA_DIR, 'media', 'replay')
+

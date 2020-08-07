@@ -50,6 +50,8 @@ parser.add_option("-P", "--path", dest="path",
 
 (options, args) = parser.parse_args()
 
+print('[BAI](options, args): ', options, args)
+
 #Generate random token if in app mode
 if options.app:
     OmniDB.custom_settings.DESKTOP_MODE = True
@@ -178,8 +180,12 @@ if is_ssl:
 import OmniDB
 import OmniDB_app
 import OmniDB_app.apps
+
+#: 添加Django项目启动的配置文件
 os.environ['DJANGO_SETTINGS_MODULE'] = 'OmniDB.settings'
 import django
+
+#: 设置Django应用
 django.setup()
 import html.parser
 import http.cookies
@@ -241,9 +247,14 @@ class DjangoApplication(object):
 
         logging.config.dictConfig(OmniDB.settings.LOGGING)
         #cherrypy.log.error_log.propagate = False
+
+        #: 设置Cherrypy的日志配置
         cherrypy.log.access_log.propagate = False
+
+        #: 挂载项目静态文件
         self.mount_static(OmniDB.settings.STATIC_URL, OmniDB.settings.STATIC_ROOT)
 
+        # TODO: 配置 Cherrypy 外部的WSGI服务处理器
         cherrypy.tree.graft(WSGIHandler())
 
         port = parameters['listening_port']
@@ -254,6 +265,7 @@ class DjangoApplication(object):
         print('''Checking port availability...''',flush=True)
         logger.info('''Checking port availability...''')
 
+        #: 校验并获取端口
         while not check_port(port) or num_attempts >= 20:
             print("Port {0} is busy, trying another port...".format(port),flush=True)
             logger.info("Port {0} is busy, trying another port...".format(port))
@@ -283,14 +295,24 @@ class DjangoApplication(object):
                 v_cherrypy_config['server.ssl_private_key'] = parameters['ssl_key_file']
                 v_cherrypy_config['server.ssl_context'] = ssl_ctx
 
+            #: 设置cherrypy全局配置项
             cherrypy.config.update(v_cherrypy_config)
 
             print ("Starting server {0} at {1}:{2}{3}.".format(OmniDB.settings.OMNIDB_VERSION,parameters['listening_address'],str(port),OmniDB.settings.PATH),flush=True)
             logger.info("Starting server {0} at {1}:{2}.".format(OmniDB.settings.OMNIDB_VERSION,parameters['listening_address'],str(port)))
 
+            #: 启动（启动数据库）
             # Startup
             startup.startup_procedure()
 
+            #: 注册JumpServer Terminal
+            startup.registry_terminal()
+
+            #: 设置core_server
+            import JumpServer_app.server
+            JumpServer_app.server.core_server = JumpServer_app.server.Server()
+
+            #: 开启Cherrypy Web服务
             cherrypy.engine.start()
 
             if not app_version:
@@ -302,7 +324,10 @@ class DjangoApplication(object):
                 print ("http://localhost:{0}/login/?user=admin&pwd=admin&token={1}".format(str(port),OmniDB.custom_settings.APP_TOKEN),flush=True)
 
 
+            #: 停止cherrypy服务
             cherrypy.engine.block()
+
+            #: 退出cherrypy服务
             cherrypy.engine.exit()
         else:
             print('Tried 20 different ports without success, closing...',flush=True)
@@ -319,12 +344,14 @@ if __name__ == "__main__":
     print('''Checking port availability...''',flush=True)
     logger.info('''Checking port availability...''')
 
+    #: 校验并获取Web socket端口
     while not check_port(port) or num_attempts_port >= 20:
         print("Port {0} is busy, trying another port...".format(port),flush=True)
         logger.info("Port {0} is busy, trying another port...".format(port))
         port = random.randint(1025,32676)
         num_attempts_port = num_attempts_port + 1
 
+    #: 设置最终使用的配置
     if num_attempts_port < 20:
         OmniDB.settings.OMNIDB_WEBSOCKET_PORT          = port
         if ews_port==None:
@@ -341,11 +368,18 @@ if __name__ == "__main__":
         print ("Starting websocket server at port {0}.".format(str(port)),flush=True)
         logger.info("Starting websocket server at port {0}.".format(str(port)))
 
+        #: 清除过期的Sessions
         #Removing Expired Sessions
         SessionStore.clear_expired()
 
+        #: 开启一个线程启动Web socket服务
         #Websocket Core
         ws_core.start_wsserver_thread()
+
+        #: 开启一个线程处理命令上传
+        ws_core.start_cmd_upload_thread()
+
+        #: 运行Django应用
         DjangoApplication().run(
             {
                 'listening_address'   : listening_address,

@@ -11,3 +11,8 @@ APP_TOKEN = None
 PWD_TIMEOUT_TOTAL = 1800
 THREAD_POOL_MAX_WORKERS = 2
 PATH = ''
+
+# JumpServer Config
+BOOTSTRAP_TOKEN = 'ABC'
+CORE_URL = 'http://127.0.0.1'
+JUMPSERVER_KEY_FILE_NAME = 'jumpserver-omnidb.key'
