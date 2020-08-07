@@ -338,6 +338,11 @@ class DjangoApplication(object):
             startup.startup_procedure()
 
             #: JIANGJIE ANNOTATION :#
+            #: TODO: 注册终端
+
+            #: TODO: 处理未上传录像文件
+
+            #: JIANGJIE ANNOTATION :#
             #: 启动Web Server
             cherrypy.engine.start()
 
