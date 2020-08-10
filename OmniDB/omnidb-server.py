@@ -11,6 +11,7 @@ import string
 import optparse
 import configparser
 import OmniDB.custom_settings
+import OmniDB.jumpserver_settings
 OmniDB.custom_settings.DEV_MODE = False
 OmniDB.custom_settings.DESKTOP_MODE = False
 
@@ -166,6 +167,27 @@ try:
 except:
     pass
 
+try:
+    OmniDB.jumpserver_settings.JUMPSERVER_BOOTSTRAP_TOKEN = Config.get('jumpserver', 'bootstrap_token')
+except:
+    #: JIANGJIE ANNOTATION :#
+    #: 从环境变量获取
+    OmniDB.jumpserver_settings.JUMPSERVER_BOOTSTRAP_TOKEN = os.environ.get('BOOTSTRAP_TOKEN')
+
+try:
+    OmniDB.jumpserver_settings.JUMPSERVER_HOST = Config.get('jumpserver', 'host')
+except:
+    #: JIANGJIE ANNOTATION :#
+    #: 从环境变量获取
+    OmniDB.jumpserver_settings.JUMPSERVER_HOST = os.environ.get('CORE_HOST')
+
+try:
+    #: JIANGJIE ANNOTATION :#
+    #: 从环境变量获取
+    OmniDB.jumpserver_settings.JUMPSERVER_LOG_LEVEL = Config.get('jumpserver', 'log_level')
+except:
+    OmniDB.jumpserver_settings.JUMPSERVER_LOG_LEVEL = os.environ.get('LOG_LEVEL')
+
 #: JIANGJIE ANNOTATION :#
 #: 等待 HOST_DIR、custom_settings 中的参数设置完成后，再导入项目的 Django settings 文件
 #importing settings after setting HOME_DIR and other required parameters
@@ -178,8 +200,10 @@ logger = logging.getLogger('OmniDB_app.Init')
 
 #: JIANGJIE ANNOTATION :#
 #: 设置项目的 Django settings 文件
+#: TODO: 配置项目启动模式是否为DEBUG
 #Configuring Django settings before loading them
 OmniDB.settings.DEBUG = False
+
 if is_ssl:
     OmniDB.settings.SESSION_COOKIE_SECURE = True
     OmniDB.settings.CSRF_COOKIE_SECURE = True
@@ -235,6 +259,7 @@ import django.contrib.auth.password_validation
 
 from django.core.handlers.wsgi import WSGIHandler
 from OmniDB import startup, ws_core
+import JumpServer_app.startup
 
 import time
 import cherrypy
@@ -338,7 +363,13 @@ class DjangoApplication(object):
             startup.startup_procedure()
 
             #: JIANGJIE ANNOTATION :#
-            #: TODO: 注册终端
+            #: 注册终端
+            logger.info('注册终端')
+            ok = JumpServer_app.startup.register_terminal()
+            if not ok:
+                logger.error('终端注册失败')
+                sys.exit()
+            logger.info('终端注册完成')
 
             #: TODO: 处理未上传录像文件
 
@@ -410,6 +441,9 @@ if __name__ == "__main__":
         #: 开启WebSocket Server: tornado + asyncio
         #Websocket Core
         ws_core.start_wsserver_thread()
+
+        #: JIANGJIE ANNOTATION :#
+        #: TODO: 开启线程: 处理命令上传
 
         #: JIANGJIE ANNOTATION :#
         #: 启动Web Server: cherrypy + Django.WSGIHandler
