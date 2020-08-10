@@ -95,7 +95,7 @@ Config = configparser.ConfigParser()
 Config.read(config_file)
 
 #: JIANGJIE ANNOTATION :#
-#: 设置项目启动所需的变量
+#: 设置项目启动所需的变量，读取顺序
 #: 1. 启动脚本所指参数
 #: 2. 配置文件所指参数(omnidb.conf)
 #: 3. custom_settings所指参数
@@ -355,7 +355,7 @@ class DjangoApplication(object):
                 print ("http://localhost:{0}/login/?user=admin&pwd=admin&token={1}".format(str(port),OmniDB.custom_settings.APP_TOKEN),flush=True)
 
 
-            #: JIANGJIE ANNOTATIONO :#
+            #: JIANGJIE ANNOTATION :#
             #: 阻塞
             cherrypy.engine.block()
             #: 退出
