@@ -60,7 +60,24 @@ class Session(object):
         self.v_csv_delimiter = p_csv_delimiter
         self.v_tab_connections = dict([])
 
-        self.RefreshDatabaseList()
+        #: JIANGJIE ANNOTATION :#
+        #: 创建OmniDB用户Session时, 取消自动刷新/添加OmniDB用户当前所拥有的connections
+        #: 改为手动添加, 手动添加时，可以直接附上connection密码, 实现自动登录
+        # self.RefreshDatabaseList()
+
+        #: JIANGJIE ANNOTATION :#
+        #: 页面默认打开的conn_id
+        self.js_v_default_open_conn_id = None
+        #: 保存conn_id与JumpServer相关信息
+        # {
+        #     conn_id: {
+        #         'js_user': js_user,
+        #         'js_system_user': js_system_user_info,
+        #         'js_database': js_database_info,
+        #         'js_session': js_session_info,
+        #     },
+        # }
+        self.js_v_connections = dict([])
 
     def AddDatabase(self,
                     p_conn_id = None,

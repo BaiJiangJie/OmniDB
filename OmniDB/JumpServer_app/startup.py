@@ -51,7 +51,7 @@ def register_terminal():
         access_key_id = resp_json_data['service_account']['access_key']['id']
         access_key_secret = resp_json_data['service_account']['access_key']['secret']
     except Exception as exc:
-        logger.error('获取终端Access Key信息失败: {}'.format(str(exc)))
+        logger.error('获取终端Access Key信息异常: {}'.format(str(exc)))
         logger.error('注册终端失败: {}'.format(resp.text))
         return False
     else:

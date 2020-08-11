@@ -371,7 +371,11 @@ class DjangoApplication(object):
                 sys.exit()
             logger.info('终端注册完成')
 
-            #: TODO: 处理未上传录像文件
+            #: JIANGJIE ANNOTATION :#
+            #: TODO: 开启线程: 保持心跳
+
+            #: JIANGJIE ANNOTATION :#
+            #: TODO: 上传录像: 遗留
 
             #: JIANGJIE ANNOTATION :#
             #: 启动Web Server
@@ -443,7 +447,7 @@ if __name__ == "__main__":
         ws_core.start_wsserver_thread()
 
         #: JIANGJIE ANNOTATION :#
-        #: TODO: 开启线程: 处理命令上传
+        #: TODO: 开启线程: 上传命令
 
         #: JIANGJIE ANNOTATION :#
         #: 启动Web Server: cherrypy + Django.WSGIHandler

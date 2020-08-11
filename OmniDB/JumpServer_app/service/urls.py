@@ -1,2 +1,7 @@
 url_terminal_registration = '/api/v2/terminal/terminal-registrations/'
-url_users_profile = '/api/v1/users/profile/'
+url_user_profile = '/api/v1/users/profile/'
+url_user_database_permission_validate = '/api/v1/perms/database-app-permissions/user/validate/'
+url_database_detail = '/api/v1/applications/database-apps/{database_id}/'
+url_system_user_detail = '/api/v1/assets/system-users/{system_user_id}/'
+url_system_user_auth_info = '/api/v1/assets/system-users/{system_user_id}/auth-info/'
+url_session = '/api/v1/terminal/sessions/'
