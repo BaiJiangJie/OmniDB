@@ -115,8 +115,4 @@ class JumpServerClient(object):
         return True
 
 
-def get_jumpserver_client():
-    return JumpServerClient()
-
-
-jumpserver_client = LocalProxy(get_jumpserver_client)
+jumpserver_client = JumpServerClient()

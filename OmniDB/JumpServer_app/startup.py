@@ -66,7 +66,7 @@ def register_terminal():
         logger.info('检测终端用户有效性')
         ok = service.client.jumpserver_client.check_terminal_validity()
         if not ok:
-            logger.info('检测到终端用户无效')
+            logger.info('检测到终端用户已失效: 尝试删除Access Key文件并重新启动服务, 文件路径: {}'.format(key_file))
             logger.error('注册终端失败: {}'.format(resp.text))
             return False
         logger.info('检测到终端用户有效')
