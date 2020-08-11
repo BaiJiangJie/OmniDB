@@ -1,7 +1,6 @@
 import os
 import logging
 from django.conf import settings
-from werkzeug.local import LocalProxy
 from httpsig.requests_auth import HTTPSignatureAuth
 import OmniDB.jumpserver_settings
 import requests

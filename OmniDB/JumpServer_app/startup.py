@@ -12,6 +12,7 @@ logger = logging.getLogger('JumpServer_app.startup')
 
 def register_terminal():
     logger.info('开始注册终端')
+
     logger.info('检测Access Key文件是否存在')
     key_file = settings.JUMPSERVER_KEY_FILE
     if os.path.exists(key_file):
@@ -40,9 +41,10 @@ def register_terminal():
         logger.debug('注册终端使用数据: url: {}, data: {}, headers: {}'.format(url, data, headers))
         return False
     if resp.status_code != 201:
-        logger.error('注册终端失败: {}'.format(resp.text))
+        logger.error('注册终端失败: status_code: {} text: {}'.format(resp.status_code, resp.text))
         return False
     logger.info('注册终端请求完成, status_code: {}'.format(resp.status_code))
+
     try:
         logger.info('获取终端Access Key信息')
         resp_json_data = resp.json()
@@ -63,13 +65,15 @@ def register_terminal():
             message = "{}:{}".format(access_key_id, access_key_secret)
             f.write(message)
             logger.info('Access Key写入文件成功')
+
         logger.info('检测终端用户有效性')
         ok = service.client.jumpserver_client.check_terminal_validity()
         if not ok:
             logger.info('检测到终端用户已失效: 尝试删除Access Key文件并重新启动服务, 文件路径: {}'.format(key_file))
             logger.error('注册终端失败: {}'.format(resp.text))
             return False
-        logger.info('检测到终端用户有效')
-        logger.info('注册终端完成')
-        return True
+        else:
+            logger.info('检测到终端用户有效')
+            logger.info('注册终端完成')
+            return True
 
