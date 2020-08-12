@@ -110,6 +110,7 @@ def workspace(request):
     else:
         logger.info('获取用户个人信息: 完成')
 
+    #: 校验权限: JumpServer User Database
     logger.info('校验用户连接数据库权限')
     ok = service.client.jumpserver_client.validate_user_database_permission(
         user_id=js_user_id, database_id=js_database_id, system_user_id=js_system_user_id
@@ -478,7 +479,7 @@ def workspace(request):
     request.session['omnidb_session'] = v_session
 
     #: TODO: 保存会话
+    #: TODO: 命令记录: 会话全局变量: cherrypy: 多进程: 单线程: 研究
     logger.info('请求处理完成')
     logger.info('重定向到workspace页面')
-    response = redirect('workspace')
-    return response
+    return redirect('workspace')

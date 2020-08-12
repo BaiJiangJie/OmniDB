@@ -244,5 +244,5 @@ PWD_TIMEOUT_REFRESH            = 300
 THREAD_POOL_MAX_WORKERS        = custom_settings.THREAD_POOL_MAX_WORKERS
 
 # JumpServer PARAMETERS
-KEY_DIR = os.path.dirname(HOME_DIR)
-JUMPSERVER_KEY_FILE            = os.path.join(KEY_DIR, 'key', 'jumpserver.key')
+DATA_DIR = os.path.dirname(HOME_DIR)
+JUMPSERVER_KEY_FILE            = os.path.join(DATA_DIR, 'key', 'jumpserver.key')
