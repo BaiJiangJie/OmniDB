@@ -423,11 +423,19 @@ def workspace(request):
         'password': omnidb_connection_ssh_password,
         'key': omnidb_connection_ssh_key
     }
-    #: TODO: 数据库密码: 密码有效时限: prompt_password: 研究
+    #: :BEGIN 数据库密码用不过期: 自动登录不过期; 手动登录只需输入一次将不过期
+    # v_session.AddDatabase(
+    #     conn_id, omnidb_connection_dbt_st_name, database, False,
+    #     tunnel_information, omnidb_connection_alias
+    # )
+    #: :END
+    #: :BEGIN 数据库密码会过期: 配合PWD_TIMEOUT_TOTAL和PWD_TIMEOUT_REFRESH配置选项一起控制，过期时间，刷新时间，超时未操作即断开
     v_session.AddDatabase(
-        conn_id, omnidb_connection_dbt_st_name, database, False,
+        conn_id, omnidb_connection_dbt_st_name, database, True,
         tunnel_information, omnidb_connection_alias
     )
+    v_session.v_databases[conn_id]['prompt_timeout'] = datetime.datetime.now()
+    #: :End
     logger.info('添加OmniDB Connection Database到OmniDB用户Session: 完成')
     logger.info('当前OmniDB用户Session中存在的Connection Database个数为: {}'.format(len(v_session.v_databases)))
 

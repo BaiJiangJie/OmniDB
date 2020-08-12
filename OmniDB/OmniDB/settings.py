@@ -240,7 +240,7 @@ SSL_CERTIFICATE                = ""
 SSL_KEY                        = ""
 CH_CMDS_PER_PAGE               = 20
 PWD_TIMEOUT_TOTAL              = custom_settings.PWD_TIMEOUT_TOTAL
-PWD_TIMEOUT_REFRESH            = 300
+PWD_TIMEOUT_REFRESH            = 5
 THREAD_POOL_MAX_WORKERS        = custom_settings.THREAD_POOL_MAX_WORKERS
 
 # JumpServer PARAMETERS
