@@ -209,5 +209,25 @@ class JumpServerClient(object):
             logger.debug('响应信息: {}'.format(resp.text))
             return None
 
+    def upload_command(self, command):
+        """ TODO: 上传命令 """
+        logger.info('请求上传命令')
+        if isinstance(command, dict):
+            command = [command]
+        url = urls.url_command
+        resp = self.request('post', url, json=command)
+        if resp is None:
+            logger.info('请求上传命令: 失败')
+            return None
+        if resp.status_code == 201:
+            logger.info('请求上传命令: 成功')
+            resp_json = resp.json()
+            logger.debug('响应数据: {}'.format(resp_json))
+            return resp_json
+        else:
+            logger.info('请求上传命令: 失败')
+            logger.debug('响应信息: {}'.format(resp.text))
+            return None
+
 
 jumpserver_client = JumpServerClient()

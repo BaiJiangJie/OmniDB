@@ -5,12 +5,13 @@ import requests
 from django.conf import settings
 
 from OmniDB import jumpserver_settings
-from . import service
+from . import service, manager
 
 logger = logging.getLogger('JumpServer_app.startup')
 
 
 def register_terminal():
+    """ 注册JumpServer终端: OmniDB """
     logger.info('开始注册终端')
 
     logger.info('检测Access Key文件是否存在')
@@ -76,4 +77,10 @@ def register_terminal():
             logger.info('检测到终端用户有效')
             logger.info('注册终端完成')
             return True
+
+
+def start_command_upload_thread():
+    """ 开启命令上传线程 """
+    logger.info('开启命令上传线程')
+    manager.command.command_manager.start_command_upload_thread()
 

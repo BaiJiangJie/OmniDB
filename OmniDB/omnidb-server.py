@@ -366,13 +366,19 @@ class DjangoApplication(object):
             #: 注册终端
             logger.info('注册终端')
             ok = JumpServer_app.startup.register_terminal()
-            if not ok:
+            if ok:
+                logger.info('终端注册完成')
+            else:
                 logger.error('终端注册失败')
                 sys.exit()
-            logger.info('终端注册完成')
 
             #: JIANGJIE ANNOTATION :#
             #: TODO: 开启线程: 保持心跳
+
+            #: JIANGJIE ANNOTATION :#
+            #: TODO: 开启线程: 上传命令
+            logger.info('开启命令上传处理线程')
+            JumpServer_app.startup.start_command_upload_thread()
 
             #: JIANGJIE ANNOTATION :#
             #: TODO: 上传录像: 遗留
@@ -437,17 +443,17 @@ if __name__ == "__main__":
         logger.info("Starting websocket server at port {0}.".format(str(port)))
 
         #: JIANGJIE ANNOTATION :#
-        #: 清除过期Session
+        #: 清除过期Sessions
         #Removing Expired Sessions
-        SessionStore.clear_expired()
+        # SessionStore.clear_expired()
+        #: 清除所有Sessions
+        SessionStore.get_model_class().objects.all().delete()
 
         #: JIANGJIE ANNOTATION :#
         #: 开启WebSocket Server: tornado + asyncio
         #Websocket Core
         ws_core.start_wsserver_thread()
 
-        #: JIANGJIE ANNOTATION :#
-        #: TODO: 开启线程: 上传命令
 
         #: JIANGJIE ANNOTATION :#
         #: 启动Web Server: cherrypy + Django.WSGIHandler

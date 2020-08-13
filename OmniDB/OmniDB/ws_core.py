@@ -41,6 +41,7 @@ import pexpect
 sys.path.append('OmniDB_app/include')
 from OmniDB_app.include import paramiko
 from OmniDB_app.include import custom_paramiko_expect
+from JumpServer_app.manager.command import command_manager
 
 class StoppableThread(threading.Thread):
     def __init__(self,p1,p2,p3):
@@ -174,6 +175,9 @@ def thread_dispatcher(self,args,ws_object):
         #Login request
         if v_code == request.Login:
             ws_object.v_user_key = v_data
+            #: JIANGJIE ANNOTATION :#
+            #: 设置WS@v_conn_id值
+            ws_object.v_conn_id = json_object.get('v_conn_id')
             try:
                 v_session = SessionStore(session_key=v_data)['omnidb_session']
                 ws_object.v_session = v_session
@@ -581,6 +585,10 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     self.event_loop = tornado.ioloop.IOLoop.instance()
     spawn_thread = False
 
+    #: JIANGJIE ANNOTATION :#
+    #: 记录当前WS:client对应的conn_id: WS:Login时赋值: WS:on_close和record_command中使用
+    self.v_conn_id = None
+
     lock = threading.Lock()
     self.terminal_lock = lock
     self.terminal_lock.acquire()
@@ -644,9 +652,41 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     except Exception:
         None
 
-
   def check_origin(self, origin):
     return True
+
+  def record_command(self, cmd_input, cmd_output):
+      """
+      说明:
+          记录命令
+      功能:
+          - 记录命令
+          - TODO: 记录录像
+      """
+      #: Pretty cmd input output
+      pretty_cmd_input = command_manager.pretty_cmd_input(cmd_input)
+      pretty_cmd_output = command_manager.pretty_cmd_output(cmd_output)
+
+      #: 记录命令
+      logger.info('记录命令')
+      js_v_connection = self.v_session.js_v_connections[self.v_conn_id]
+      user_name = js_v_connection['js_user']['name']
+      user_username = js_v_connection['js_user']['username']
+      asset = js_v_connection['js_database']['name']
+      system_user = js_v_connection['js_system_user']['username']
+      session = js_v_connection['js_session']['id']
+      org_id = js_v_connection['js_database']['org_id']
+      command = {
+          'user': '{} ({})'.format(user_name, user_username),
+          'asset': asset, 'system_user': system_user,
+          'input': pretty_cmd_input[:128], 'output': pretty_cmd_output[:1024],
+          'session': session, 'timestamp': int(time.time()), 'org_id': org_id
+      }
+      command_manager.record_command(command)
+
+      #: TODO: 记录录像
+      logger.info('记录录像: 待开发')
+
 
 def start_wsserver_thread():
     t = threading.Thread(target=start_wsserver)
@@ -889,6 +929,12 @@ def thread_query(self,args,ws_object):
         v_tab_title      = args['v_tab_title']
         v_autocommit     = args['v_autocommit']
 
+        #: JIANGJIE ANNOTATION :#
+        #: 获取输入命令
+        js_cmd_input = v_sql
+        #: 过滤输入命令
+        command_manager.filter_cmd_input(js_cmd_input)
+
         #Removing last character if it is a semi-colon
         if v_sql[-1:]==';':
             v_sql = v_sql[:-1]
@@ -1003,6 +1049,13 @@ def thread_query(self,args,ws_object):
                 if (v_mode==0 or v_mode==1) and not v_all_data:
 
                     v_data1 = v_database.v_connection.QueryBlock(v_sql, 50, True, True)
+
+                    #: JIANGJIE ANNOTATION :#
+                    #: 获取命令输出
+                    js_cmd_output = v_data1.Pretty(v_database.v_connection.v_expanded)
+                    #: 记录命令输入输出
+                    ws_object.record_command(js_cmd_input, js_cmd_output)
+
 
                     v_notices = v_database.v_connection.GetNotices()
                     v_notices_text = ''
@@ -1133,6 +1186,8 @@ def thread_query(self,args,ws_object):
                     }
                     ws_object.event_loop.add_callback(send_response_thread_safe,ws_object,json.dumps(v_response))
         except Exception as exc:
+            #: JIANGJIE ANNOTATION :#
+            #: TODO: 记录命令
             if not self.cancel:
                 try:
                     v_notices = v_database.v_connection.GetNotices()

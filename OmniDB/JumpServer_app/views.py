@@ -469,7 +469,6 @@ def workspace(request):
     v_session.js_v_connections[conn_id] = js_v_connection
 
     #: 设置默认打开的conn_id
-    #: TODO: 默认打开的conn_id: workspace: 页面: 修改
     logger.info('设置OmniDB默认打开conn_id: {}'.format(conn_id))
     v_session.js_v_default_open_conn_id = conn_id
 
