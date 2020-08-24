@@ -19,11 +19,11 @@ class JumpServerClient(object):
         self._headers = None
 
     def init_host(self):
-        logger.info('初始化JumpServer Client host参数')
+        # logger.debug('初始化JumpServer Client host参数')
         self._host = OmniDB.jumpserver_settings.JUMPSERVER_HOST
 
     def init_auth(self):
-        logger.info('初始化JumpServer Client auth参数')
+        # logger.debug('初始化JumpServer Client auth参数')
         key_file = settings.JUMPSERVER_KEY_FILE
         if not os.path.exists(key_file):
             logger.error('Access Key文件不存在')
@@ -38,7 +38,7 @@ class JumpServerClient(object):
         self._auth = auth
 
     def init_headers(self):
-        logger.info('初始化JumpServer Client headers参数')
+        # logger.debug('初始化JumpServer Client headers参数')
         headers = {
             'Accept': 'application/json',
             'Date': "Mon, 17 Feb 2014 06:11:05 GMT",
@@ -75,10 +75,7 @@ class JumpServerClient(object):
             'auth': self.auth, 'headers': self.headers
         }
         kwargs.update(params)
-        logger.debug(
-            '发送请求: method: {}, url: {}, args: {}, kwargs: {}'
-            ''.format(method.upper(), url, args, kwargs)
-        )
+        # logger.debug('发送请求: method: {}, url: {}, args: {}, kwargs: {}'.format(method.upper(), url, args, kwargs))
         try:
             resp = getattr(requests, method)(url, *args, **kwargs)
         except Exception as exc:
@@ -108,7 +105,7 @@ class JumpServerClient(object):
         logger.info('检测终端用户有效性')
         profile = self.get_terminal_profile()
         if profile is None:
-            logger.info('终端用户: 已失效')
+            logger.info('终端用户: 无效')
             return False
         role = profile.get('role')
         if role is None:

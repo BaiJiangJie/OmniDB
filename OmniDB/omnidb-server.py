@@ -366,11 +366,11 @@ class DjangoApplication(object):
             #: 注册终端
             logger.info('注册终端')
             ok = JumpServer_app.startup.register_terminal()
-            if ok:
-                logger.info('终端注册完成')
-            else:
-                logger.error('终端注册失败')
+            if not ok:
+                logger.info('终端注册失败')
                 sys.exit()
+            else:
+                logger.info('终端注册成功')
 
             #: JIANGJIE ANNOTATION :#
             #: TODO: 开启线程: 保持心跳

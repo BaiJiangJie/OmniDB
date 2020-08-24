@@ -8,7 +8,7 @@ logger = logging.getLogger('JumpServer_app.manager.command')
 
 
 class CommandManager(object):
-    """ TODO: 命令上传管理器 """
+    """ TODO: 命令管理器 """
 
     def __init__(self):
         self._queue = queue.Queue(1000)
