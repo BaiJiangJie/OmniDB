@@ -59,8 +59,8 @@ function initCreateTabFunctions() {
       var v_complement_width = 100 - v_width;
 
     	var v_html = "<div id='" + v_tab.id + "_div_left' class='div_left' style='float:left; position: relative; width:" + v_width + "%; '>" +
-    	"<div style='padding-right: 12px;'><div id='" + v_tab.id + "_div_select_group' style='width: 100%; margin-bottom: 5px; display: inline-block;'></div>" +
-      "<div id='" + v_tab.id + "_div_select_db' style='width: 100%; display: inline-block;'></div>" +
+    	"<div style='padding-right: 12px;'><div id='" + v_tab.id + "_div_select_group' style='width: 100%; margin-bottom: 5px; display: none;'></div>" +
+      "<div id='" + v_tab.id + "_div_select_db' style='width: 100%; display: none;'></div>" +
     	"</div>" +
     	"<div onmousedown='resizeHorizontal(event)' style='width: 10px; height: 100%; cursor: ew-resize; position: absolute; top: 0px; right: 0px;'><div class='resize_line_vertical' style='width: 5px; height: 100%; border-right: 1px dotted #c3c3c3;'></div><div style='width:5px;'></div></div>" +
     	"<div style='margin-right: 10px;'>" +
