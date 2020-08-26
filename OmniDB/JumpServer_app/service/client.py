@@ -209,6 +209,8 @@ class JumpServerClient(object):
         return self.requester.post_terminal_status(data)
 
     def upload_command(self, command):
+        command['input'] = command['input'][:128]
+        command['output'] = command['output'][:1024]
         return self.requester.post_command(command)
 
 
