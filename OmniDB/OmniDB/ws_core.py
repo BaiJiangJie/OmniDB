@@ -657,18 +657,17 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
   def record_command(self, cmd_input, cmd_output):
       """
-      说明:
-          记录命令
+      说明: 记录命令
       功能:
           - 记录命令
           - TODO: 记录录像
       """
+      logger.info('记录命令')
       #: Pretty cmd input output
       pretty_cmd_input = command_manager.pretty_cmd_input(cmd_input)
       pretty_cmd_output = command_manager.pretty_cmd_output(cmd_output)
 
       #: 记录命令
-      logger.info('记录命令')
       js_v_connection = self.v_session.js_v_connections[self.v_conn_id]
       user_name = js_v_connection['js_user']['name']
       user_username = js_v_connection['js_user']['username']
@@ -685,7 +684,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
       command_manager.record_command(command)
 
       #: TODO: 记录录像
-      logger.info('记录录像: 待开发')
+      logger.info('记录录像, 待开发')
 
 
 def start_wsserver_thread():

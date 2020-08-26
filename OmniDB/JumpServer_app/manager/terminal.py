@@ -1,5 +1,7 @@
 import os
+import time
 import logging
+import threading
 from django.conf import settings
 from .. import service
 
@@ -11,6 +13,7 @@ class TerminalManager(object):
 
     def __init__(self):
         self.key_file = settings.JUMPSERVER_KEY_FILE
+        self.config = {}
 
     def registry(self):
         """ 注册终端 """
@@ -50,6 +53,60 @@ class TerminalManager(object):
     def check_validity():
         """ 校验终端有效性 """
         return service.client.jumpserver_client.check_terminal_validity()
+
+    def set_config(self, config):
+        self.config = config
+
+    def get_config(self):
+        return self.config
+
+    def get_config_heartbeat_interval(self):
+        config = self.get_config()
+        heartbeat_interval = config['TERMINAL_HEARTBEAT_INTERVAL']
+        return heartbeat_interval
+
+    def get_config_command_storage_type(self):
+        config = self.get_config()
+        storage_type = config['TERMINAL_COMMAND_STORAGE']['TYPE']
+        return storage_type
+
+    def start_timing_fetch_config_thread(self):
+        t = threading.Thread(target=self.start_fetch_config)
+        t.setDaemon(True)
+        t.start()
+
+    def start_fetch_config(self):
+        while True:
+            try:
+                logger.debug('定时获取终端配置')
+                resp_config = service.client.jumpserver_client.fetch_terminal_config()
+                if resp_config.status_code == 200:
+                    config = resp_config.json()
+                    self.set_config(config)
+                else:
+                    logger.error(f'获取终端配置失败, 响应状态码: ({resp_config.status_code}), text: ({resp_config.text})')
+            except Exception as exc:
+                logger.error(f'获取终端配置出现异常: ({str(exc)})', exc_info=True)
+            time.sleep(10)
+
+    def start_keep_heartbeat_thread(self):
+        t = threading.Thread(target=self.start_keep_heartbeat)
+        t.setDaemon(True)
+        t.start()
+
+    def start_keep_heartbeat(self):
+        while True:
+            try:
+                logger.debug('保持终端心跳')
+                resp_heartbeat = service.client.jumpserver_client.keep_terminal_heartbeat()
+                if resp_heartbeat.status_code == 201:
+                    pass
+                else:
+                    logger.error(f'保持终端心跳失败, 响应状态码: ({resp_heartbeat.status_code}), text: ({resp_heartbeat.text})')
+            except Exception as exc:
+                logger.error(f'保持终端心跳出现异常: ({str(exc)})', exc_info=True)
+            heartbeat_interval = self.get_config_heartbeat_interval()
+            time.sleep(heartbeat_interval)
 
 
 terminal_manager = TerminalManager()

@@ -21,8 +21,17 @@ def register_terminal():
         return False
 
 
+def start_timing_fetch_terminal_config_thread():
+    """ 开启定时获取终端配置线程 """
+    terminal_manager.start_timing_fetch_config_thread()
+
+
+def start_keep_terminal_heartbeat_thread():
+    """ 开启保持终端心跳线程 """
+    terminal_manager.start_keep_heartbeat_thread()
+
+
 def start_command_upload_thread():
     """ 开启命令上传线程 """
-    logger.info('开启命令上传线程')
     command_manager.start_command_upload_thread()
 

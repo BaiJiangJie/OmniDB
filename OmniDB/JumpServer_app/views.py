@@ -8,6 +8,7 @@ from OmniDB_app.views.login import sign_in_automatic
 import OmniDB_app.include.OmniDatabase as OmniDatabase
 import OmniDB_app.include.Spartacus.Utils as Utils
 from . import service, utils
+from .manager.session import session_manager
 
 logger = logging.getLogger('JumpServer_app.views')
 
@@ -22,13 +23,6 @@ def workspace(request):
     csrf_token = request.COOKIES.get('csrftoken')
     database_id = request.GET.get('database_id')
     system_user_id = request.GET.get('system_user_id')
-    logger.debug(
-        f'获取到请求参数: '
-        f'session_id: {session_id}'
-        f'csrf_token: {csrf_token}'
-        f'database_id: {database_id}'
-        f'system_user_id: {system_user_id}'
-    )
     if not all([session_id, csrf_token, database_id, system_user_id]):
         if not session_id or not csrf_token:
             error = '用户未登录(请求中缺少sessionid或csrftoken字段)'
@@ -315,9 +309,10 @@ def workspace(request):
             'date_start': datetime.datetime.now(),
             'date_end': None,
         }
-        resp_session = service.client.jumpserver_client.create_session(data)
+        resp_session = session_manager.create_session(data)
         if resp_session.status_code == 201:
             js_session = resp_session.json()
+            session_manager.add_to_active_sessions(js_session)
         else:
             error = f'创建JumpServer会话失败, ' \
                     f'响应状态码: {resp_session.status_code}, ' \

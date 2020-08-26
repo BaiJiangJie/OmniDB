@@ -8,6 +8,7 @@ import requests
 from . import urls
 from urllib.parse import urljoin
 from .. import utils
+from ..manager.session import session_manager
 
 
 logger = logging.getLogger('JumpServer_app.service.client')
@@ -132,6 +133,8 @@ class JumpServerRequester(object):
 
     def post_command(self, data):
         command_url = urls.URL_COMMAND
+        if not isinstance(data, list):
+            data = [data]
         return self._requests_by_access_key(method='post', url=command_url, json=data)
 
     def post_terminal(self):
@@ -145,14 +148,20 @@ class JumpServerRequester(object):
         }
         return self._raw_requests(method='post', url=registry_terminal_url, data=data, headers=headers)
 
+    def get_terminal_config(self):
+        terminal_config_url = urls.URL_TERMINAL_CONFIG
+        return self._requests_by_access_key(method='get', url=terminal_config_url)
+
+    def post_terminal_status(self, data):
+        terminal_status_url = urls.URL_TERMINAL_STATUS
+        return self._requests_by_access_key(method='post', url=terminal_status_url, json=data)
+
 
 class JumpServerClient(object):
     """ JumpServer Client (业务层面) """
 
-    requester = JumpServerRequester()
-
     def __init__(self):
-        pass
+        self.requester = JumpServerRequester()
 
     def get_terminal_profile(self):
         return self.requester.get_terminal_profile()
@@ -191,8 +200,16 @@ class JumpServerClient(object):
             logger.error(f'校验终端有效性异常: ({str(exc)})', exc_info=True)
             return False
 
+    def fetch_terminal_config(self):
+        return self.requester.get_terminal_config()
+
+    def keep_terminal_heartbeat(self):
+        active_sessions = session_manager.get_active_sessions_ids()
+        data = {'sessions': active_sessions}
+        return self.requester.post_terminal_status(data)
+
     def upload_command(self, command):
-        pass
+        return self.requester.post_command(command)
 
 
 jumpserver_client = JumpServerClient()
