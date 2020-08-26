@@ -15,7 +15,7 @@ class TerminalManager(object):
         self.key_file = settings.JUMPSERVER_KEY_FILE
         self.config = {}
 
-    def registry(self):
+    def try_registry(self):
         """ 注册终端 """
         if os.path.exists(self.key_file):
             logger.info('终端AccessKey文件已存在, 跳过终端注册')
@@ -52,6 +52,7 @@ class TerminalManager(object):
     @staticmethod
     def check_validity():
         """ 校验终端有效性 """
+        logger.info('检测终端有效性')
         return service.client.jumpserver_client.check_terminal_validity()
 
     def set_config(self, config):

@@ -367,26 +367,19 @@ class DjangoApplication(object):
             logger.info('注册终端')
             ok = JumpServer_app.startup.register_terminal()
             if not ok:
-                logger.info('终端注册失败')
                 sys.exit()
-            else:
-                logger.info('终端注册成功')
 
-            #: TODO: 开启线程: 定时获取终端配置
             logger.info('开启定时获取终端配置线程')
             JumpServer_app.startup.start_timing_fetch_terminal_config_thread()
 
-            #: TODO: 开启线程: 保持终端心跳
             logger.info('开启保持终端心跳线程')
             JumpServer_app.startup.start_keep_terminal_heartbeat_thread()
 
-            #: TODO: 开启线程: 上传命令
             logger.info('开启命令上传处理线程')
             JumpServer_app.startup.start_command_upload_thread()
 
             #: TODO: 上传录像: 遗留
 
-            #: JIANGJIE ANNOTATION :#
             #: 启动Web Server
             cherrypy.engine.start()
 

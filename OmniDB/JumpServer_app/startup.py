@@ -7,18 +7,18 @@ logger = logging.getLogger('JumpServer_app.startup')
 
 def register_terminal():
     """ 注册JumpServer终端: OmniDB """
-    ok = terminal_manager.registry()
-    if ok:
-        logger.info('校验终端有效性')
-        is_valid = terminal_manager.check_validity()
-        if is_valid:
-            logger.info('终端有效')
-            return True
-        else:
-            logger.error('终端无效, 尝试删除AccessKey文件并重新启动服务 (文件路径: {})'.format(terminal_manager.key_file))
-            return False
-    else:
+    ok = terminal_manager.try_registry()
+    if not ok:
+        logger.error('终端注册失败, 尝试删除AccessKey文件并重新启动服务 (文件路径: {})'.format(terminal_manager.key_file))
         return False
+
+    is_valid = terminal_manager.check_validity()
+    if not is_valid:
+        logger.error('终端无效, 尝试删除AccessKey文件并重新启动服务 (文件路径: {})'.format(terminal_manager.key_file))
+        return False
+
+    logger.info('终端注册成功')
+    return True
 
 
 def start_timing_fetch_terminal_config_thread():
