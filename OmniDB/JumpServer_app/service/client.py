@@ -1,230 +1,198 @@
 import os
+import socket
 import logging
 from django.conf import settings
 from httpsig.requests_auth import HTTPSignatureAuth
-import OmniDB.jumpserver_settings
+from OmniDB import jumpserver_settings
 import requests
 from . import urls
+from urllib.parse import urljoin
+from .. import utils
 
 
 logger = logging.getLogger('JumpServer_app.service.client')
 
 
-class JumpServerClient(object):
-
+class JumpServerRequester(object):
+    """ JumpServer Request (API层面) """
     def __init__(self):
-        self.methods = ['get', 'post', 'put', 'patch']
+        self._key_file = settings.JUMPSERVER_KEY_FILE
+
+        self._allowed_method = ['get', 'post']
         self._host = None
         self._auth = None
         self._headers = None
 
-    def init_host(self):
-        # logger.debug('初始化JumpServer Client host参数')
-        self._host = OmniDB.jumpserver_settings.JUMPSERVER_HOST
+    def set_host(self, host):
+        self._host = host
 
-    def init_auth(self):
-        # logger.debug('初始化JumpServer Client auth参数')
-        key_file = settings.JUMPSERVER_KEY_FILE
-        if not os.path.exists(key_file):
-            logger.error('Access Key文件不存在')
-            return
-        with open(key_file, 'r') as f:
-            key = f.read()
-        key_id, key_secret = key.split(':')
-        signature_headers = ['(request-target)', 'accept', 'date', 'host']
-        auth = HTTPSignatureAuth(
-            key_id=key_id, secret=key_secret, algorithm='hmac-sha256', headers=signature_headers
-        )
+    def set_auth(self, auth):
         self._auth = auth
 
+    def set_headers(self, headers):
+        self._headers = headers
+
+    def init_host(self):
+        host = jumpserver_settings.JUMPSERVER_HOST
+        self.set_host(host)
+
+    def init_auth(self):
+        access_key = utils.read_access_key_from_file()
+        if access_key is None:
+            return
+        try:
+            access_key_id, access_key_secret = access_key.split(':')
+        except Exception as exc:
+            logger.error('获取access_key异常: {}'.format(str(exc)), exc_info=True)
+            return
+        else:
+            signature_headers = ['(request-target)', 'accept', 'date', 'host']
+            auth = HTTPSignatureAuth(
+                key_id=access_key_id, secret=access_key_secret,
+                algorithm='hmac-sha256', headers=signature_headers
+            )
+            self.set_auth(auth)
+
     def init_headers(self):
-        # logger.debug('初始化JumpServer Client headers参数')
         headers = {
             'Accept': 'application/json',
             'Date': "Mon, 17 Feb 2014 06:11:05 GMT",
             'X-JMS-ORG': 'ROOT'
         }
-        self._headers = headers
+        self.set_headers(headers)
 
-    @property
-    def host(self):
+    def get_host(self):
         if self._host is None:
             self.init_host()
         return self._host
 
-    @property
-    def auth(self):
+    def get_auth(self):
         if self._auth is None:
             self.init_auth()
         return self._auth
 
-    @property
-    def headers(self):
+    def get_headers(self):
         if self._headers is None:
             self.init_headers()
         return self._headers
 
-    def request(self, method, url, *args, **kwargs):
+    def build_url(self, url):
+        host = self.get_host()
+        url = urljoin(host, url)
+        return url
+
+    def _raw_requests(self, method, url, *args, **kwargs):
         method = method.lower()
-        if method not in self.methods:
-            logger.debug('请求方法不允许: {}'.format(method))
+        if method not in self._allowed_method:
+            logger.debug('请求方法不被允许: {}'.format(method))
             return None
 
-        url = '{}{}'.format(self.host, url)
-        params = {
-            'auth': self.auth, 'headers': self.headers
-        }
-        kwargs.update(params)
-        # logger.debug('发送请求: method: {}, url: {}, args: {}, kwargs: {}'.format(method.upper(), url, args, kwargs))
+        url = self.build_url(url)
         try:
-            resp = getattr(requests, method)(url, *args, **kwargs)
+            response = getattr(requests, method)(url, *args, **kwargs)
         except Exception as exc:
             logger.error('请求异常: {}'.format(str(exc)), exc_info=True)
-            return None
+            raise
         else:
-            return resp
+            return response
+
+    def _requests_by_access_key(self, method, url, *args, **kwargs):
+        kwargs.update({'auth': self.get_auth(), 'headers': self.get_headers()})
+        return self._raw_requests(method, url, *args, **kwargs)
 
     def get_terminal_profile(self):
-        logger.info('请求终端用户个人信息')
-        url = urls.url_user_profile
-        resp = self.request('get', url)
-        if resp is None:
-            logger.info('请求终端用户个人信息: 失败')
-            return None
-        elif resp.status_code == 200:
-            logger.info('请求终端用户个人信息: 成功')
-            resp_json = resp.json()
-            logger.debug('响应数据: {}'.format(resp_json))
-            return resp_json
-        else:
-            logger.info('请求终端用户个人信息: 失败')
-            logger.debug('响应信息: {}'.format(resp.text))
-            return None
+        profile_url = urls.URL_USER_PROFILE
+        return self._requests_by_access_key(method='get', url=profile_url)
 
-    def check_terminal_validity(self):
-        logger.info('检测终端用户有效性')
-        profile = self.get_terminal_profile()
-        if profile is None:
-            logger.info('终端用户: 无效')
-            return False
-        role = profile.get('role')
-        if role is None:
-            logger.info('终端用户个人信息中缺少字段: role')
-            return False
-        elif role != 'App':
-            logger.info('终端用户角色({})不是App'.format(role))
-            return False
-        else:
-            logger.info('终端用户: 有效')
-            return True
+    def get_user_profile_by_cookies(self, cookies):
+        profile_url = urls.URL_USER_PROFILE
+        return self._raw_requests(method='get', url=profile_url, cookies=cookies)
+
+    def get_database_by_id(self, _id):
+        database_url = urls.URL_DATABASE_DETAIL.format(database_id=_id)
+        return self._requests_by_access_key(method='get', url=database_url)
+
+    def get_system_user_by_id(self, _id):
+        system_user_url = urls.URL_SYSTEM_USER_DETAIL.format(system_user_id=_id)
+        return self._requests_by_access_key(method='get', url=system_user_url)
+
+    def get_system_user_auth_info_by_id(self, _id):
+        system_user_auth_info_url = urls.URL_SYSTEM_USER_AUTH_INFO.format(system_user_id=_id)
+        return self._requests_by_access_key(method='get', url=system_user_auth_info_url)
+
+    def get_user_database_permission_validate(self, user_id, database_id, system_user_id):
+        user_database_permission_validate_url = urls.URL_USER_DATABASE_PERMISSION_VALIDATE
+        query_string = f'user_id={user_id}&database_app_id={database_id}&system_user_id={system_user_id}'
+        url = f'{user_database_permission_validate_url}?{query_string}'
+        return self._requests_by_access_key(method='get', url=url)
+
+    def post_session(self, data):
+        session_url = urls.URL_SESSION
+        return self._requests_by_access_key(method='post', url=session_url, data=data)
+
+    def post_command(self, data):
+        command_url = urls.URL_COMMAND
+        return self._requests_by_access_key(method='post', url=command_url, json=data)
+
+    def post_terminal(self):
+        registry_terminal_url = urls.URL_TERMINAL_REGISTRATION
+        data = {
+            'name': '[OmniDB] {}'.format(socket.gethostname())
+        }
+        headers = {
+            'Authorization': 'BootstrapToken {}'.format(jumpserver_settings.JUMPSERVER_BOOTSTRAP_TOKEN),
+            'X-JMS-ORG': 'ROOT'
+        }
+        return self._raw_requests(method='post', url=registry_terminal_url, data=data, headers=headers)
+
+
+class JumpServerClient(object):
+    """ JumpServer Client (业务层面) """
+
+    requester = JumpServerRequester()
+
+    def __init__(self):
+        pass
+
+    def get_terminal_profile(self):
+        return self.requester.get_terminal_profile()
+
+    def get_user_profile_by_cookies(self, cookies):
+        return self.requester.get_user_profile_by_cookies(cookies)
 
     def validate_user_database_permission(self, user_id, database_id, system_user_id):
-        logger.info('校验用户数据库权限')
-        params = 'user_id={}&database_app_id={}&system_user_id={}'.format(
-            user_id, database_id, system_user_id
+        return self.requester.get_user_database_permission_validate(
+            user_id=user_id, database_id=database_id, system_user_id=system_user_id
         )
-        url = '{}?{}'.format(urls.url_user_database_permission_validate, params)
-        resp = self.request('get', url)
-        if resp is None:
-            logger.info('校验数据库权限: 失败')
-            return False
-        elif resp.status_code == 200:
-            logger.info('校验用户数据库权限: 成功')
-            resp_json = resp.json()
-            logger.debug('响应数据: {}'.format(resp_json))
-            return True
-        else:
-            logger.info('校验用户数据库权限: 失败')
-            logger.debug('响应信息: {}'.format(resp.text))
-            return False
 
     def get_database(self, database_id):
-        logger.info('请求数据库信息')
-        url = urls.url_database_detail.format(database_id=database_id)
-        resp = self.request('get', url)
-        if resp is None:
-            logger.info('请求数据库信息: 失败')
-            return None
-        elif resp.status_code == 200:
-            logger.info('请求数据库信息: 成功')
-            resp_json = resp.json()
-            logger.debug('响应数据: {}'.format(resp_json))
-            return resp_json
-        else:
-            logger.info('请求数据库信息: 失败')
-            logger.debug('响应信息: {}'.format(resp.text))
-            return None
+        return self.requester.get_database_by_id(database_id)
 
     def get_system_user(self, system_user_id):
-        logger.info('请求系统用户信息')
-        url = urls.url_system_user_detail.format(system_user_id=system_user_id)
-        resp = self.request('get', url)
-        if resp is None:
-            logger.info('请求系统用户信息: 失败')
-            return None
-        elif resp.status_code == 200:
-            logger.info('请求系统用户信息: 成功')
-            resp_json = resp.json()
-            logger.debug('响应数据: {}'.format(resp_json))
-            return resp_json
-        else:
-            logger.info('请求系统用户信息: 失败')
-            logger.debug('响应信息: {}'.format(resp.text))
-            return None
+        return self.requester.get_system_user_by_id(system_user_id)
 
     def get_system_user_auth_info(self, system_user_id):
-        logger.info('请求系统用户认证信息')
-        url = urls.url_system_user_auth_info.format(system_user_id=system_user_id)
-        resp = self.request('get', url)
-        if resp is None:
-            logger.info('请求系统用户认证信息: 失败')
-            return None
-        elif resp.status_code == 200:
-            logger.info('请求系统用户认证信息: 成功')
-            resp_json = resp.json()
-            logger.debug('响应数据: {}'.format(resp_json))
-            return resp_json
-        else:
-            logger.info('请求系统用户认证信息: 失败')
-            logger.debug('响应信息: {}'.format(resp.text))
-            return None
+        return self.requester.get_system_user_auth_info_by_id(system_user_id)
 
     def create_session(self, data):
-        logger.info('请求创建会话')
-        url = urls.url_session
-        resp = self.request('post', url, data=data)
-        if resp is None:
-            logger.info('请求创建会话: 失败')
-            return None
-        elif resp.status_code == 201:
-            logger.info('请求创建会话: 成功')
-            resp_json = resp.json()
-            logger.debug('响应数据: {}'.format(resp_json))
-            return resp_json
-        else:
-            logger.info('请求创建会话: 失败')
-            logger.debug('响应信息: {}'.format(resp.text))
-            return None
+        return self.requester.post_session(data)
+
+    def registry_terminal(self):
+        return self.requester.post_terminal()
+
+    def check_terminal_validity(self):
+        try:
+            resp_terminal_profile = self.get_terminal_profile()
+            if resp_terminal_profile.status_code == 200:
+                return True
+            else:
+                return False
+        except Exception as exc:
+            logger.error(f'校验终端有效性异常: ({str(exc)})', exc_info=True)
+            return False
 
     def upload_command(self, command):
-        """ TODO: 上传命令 """
-        logger.info('请求上传命令')
-        if isinstance(command, dict):
-            command = [command]
-        url = urls.url_command
-        resp = self.request('post', url, json=command)
-        if resp is None:
-            logger.info('请求上传命令: 失败')
-            return None
-        if resp.status_code == 201:
-            logger.info('请求上传命令: 成功')
-            resp_json = resp.json()
-            logger.debug('响应数据: {}'.format(resp_json))
-            return resp_json
-        else:
-            logger.info('请求上传命令: 失败')
-            logger.debug('响应信息: {}'.format(resp.text))
-            return None
+        pass
 
 
 jumpserver_client = JumpServerClient()
