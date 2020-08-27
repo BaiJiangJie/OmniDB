@@ -44,6 +44,7 @@ from OmniDB_app.include import custom_paramiko_expect
 from JumpServer_app.manager.command import command_manager
 from JumpServer_app.manager.replay import replay_manager
 from JumpServer_app.manager.session import session_manager
+from JumpServer_app.manager.omnidb import omnidb_manager
 
 
 class StoppableThread(threading.Thread):
@@ -671,7 +672,14 @@ class WSHandler(tornado.websocket.WebSocketHandler):
   def on_login(self, v_conn_id):
       """ WS 登录时做一些处理操作 """
       self.v_conn_id = v_conn_id
-      replay_manager.start_replay(self.js_session_id)
+      session_id = self.js_session_id
+      v_user_id = self.v_session.v_user_id
+      v_user_key = self.v_user_key
+      logger.info(
+          f'监听到用户WebSocket连接登录, session_id({session_id}), conn_id({v_conn_id}),'
+          f' v_user_id({v_user_id}), v_user_key({v_user_key})'
+      )
+      replay_manager.start_replay(session_id)
 
   def get_command(self, cmd_input, cmd_output):
       js_v_connection = self.js_v_connection
@@ -707,23 +715,44 @@ class WSHandler(tornado.websocket.WebSocketHandler):
   def on_logout(self):
       """ Ws 关闭是做一些收尾操作 """
       session_id = self.js_session_id
+      v_conn_id = self.v_conn_id
+      v_user_id = self.v_session.v_user_id
+      v_user_key = self.v_user_key
+      logger.info(
+          f'监听到用户WebSocket连接退出, session_id({session_id}), conn_id({v_conn_id}),'
+          f' v_user_id({v_user_id}), v_user_key({v_user_key})'
+      )
       try:
           logger.info(f'完成Session({session_id})')
           session_manager.finish_session(session_id)
+          session_manager.remove_active_session(session_id)
       except Exception as exc:
-          pass
+          logger.error(f'完成Session出现异常({str(exc)})', exc_info=True)
 
       try:
           logger.info(f'结束Replay({session_id})')
           replay_manager.end_replay(session_id)
       except Exception as exc:
-          pass
+          logger.error(f'结束Replay出现异常({str(exc)})', exc_info=True)
 
       try:
           logger.info(f'完成Session录像上传({session_id})')
           session_manager.finish_session_replay_upload(session_id)
       except Exception as exc:
-          pass
+          logger.error(f'完成Session录像上传出现异常({str(exc)})', exc_info=True)
+
+      try:
+          logger.info(f'结束OmniDB-Connection')
+          omnidb_manager.end_connection(user_id=v_user_id, conn_id=v_conn_id)
+      except Exception as exc:
+          logger.error(f'结束OmniDB-Connection时出现异常({str(exc)})', exc_info=True)
+
+      try:
+          logger.info(f'结束或保留OmniDB-User-Session')
+          omnidb_manager.try_end_session(v_user_id, v_user_key)
+      except Exception as exc:
+          logger.info(f'结束或保留OmniDB-User-Session时出现异常({str(exc)})', exc_info=True)
+
 
 
 def start_wsserver_thread():

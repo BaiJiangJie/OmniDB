@@ -11,11 +11,11 @@ class SessionManager(object):
     def __init__(self):
         self.active_sessions = {}
 
-    def add_to_active_sessions(self, session):
+    def add_active_session(self, session):
         self.active_sessions[session['id']] = session
 
-    def remove_from_active_sessions(self, session):
-        self.active_sessions.pop(session['id'], None)
+    def remove_active_session(self, session_id):
+        self.active_sessions.pop(session_id, None)
 
     def get_active_sessions(self):
         return list(self.active_sessions.values())

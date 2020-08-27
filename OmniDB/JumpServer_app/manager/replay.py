@@ -51,7 +51,7 @@ class Replay(object):
         self.write_record(cmd_output)
 
     def end(self):
-        logger.info('停止记录录像')
+        logger.info('结束记录录像')
         self._write('"0":""')
         self._write('}')
         self._f.close()

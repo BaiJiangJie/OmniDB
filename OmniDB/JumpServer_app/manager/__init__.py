@@ -1,1 +1,1 @@
-from . import command, terminal, session, replay
+from . import command, terminal, session, replay, omnidb

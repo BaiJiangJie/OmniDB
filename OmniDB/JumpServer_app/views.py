@@ -9,6 +9,7 @@ import OmniDB_app.include.OmniDatabase as OmniDatabase
 import OmniDB_app.include.Spartacus.Utils as Utils
 from . import service, utils
 from .manager.session import session_manager
+from .manager.omnidb import omnidb_manager
 
 logger = logging.getLogger('JumpServer_app.views')
 
@@ -187,12 +188,14 @@ def workspace(request):
         logger.error(error, exc_info=True)
         return HttpResponse(error)
 
+    conn_id = None
     try:
         logger.info('将OmniDB-Connection-Database添加到OmniDB-User-Session')
         db_type = utils.convert_db_type(js_database_type)
         if db_type is None:
             error = '不支持数据库类型({}), 连接失败'.format(js_database_type)
             logger.error(error, exc_info=True)
+            omnidb_manager.database_manager.delete_user(v_user_id)
             return HttpResponse(error)
         omnidb_connection_dbt_st_name = db_type
         omnidb_connection_conn_string = ''
@@ -279,6 +282,9 @@ def workspace(request):
             if connections_count == -1 or v_session is None:
                 error = f'注册OmniDB-User-Session({omnidb_user_username})失败, 连接失败'
                 logger.error(error, exc_info=True)
+                # delete
+                omnidb_manager.database_manager.delete_user(v_user_id)
+                omnidb_manager.database_manager.delete_connection(conn_id)
                 return HttpResponse(error)
         logger.info(f'添加OmniDB-Connection-Database到OmniDB-User-Session({omnidb_user_username})')
         v_session.AddDatabase(
@@ -289,6 +295,9 @@ def workspace(request):
     except Exception as exc:
         error = f'添加OmniDB-Connection-Database到OmniDB-User-Session时出现异常({str(exc)}), 连接失败'
         logger.error(error, exc_info=True)
+        # delete
+        omnidb_manager.database_manager.delete_user(v_user_id)
+        omnidb_manager.database_manager.delete_connection(conn_id)
         return HttpResponse(error)
 
     try:
@@ -312,17 +321,23 @@ def workspace(request):
         resp_session = session_manager.create_session(data)
         if resp_session.status_code == 201:
             js_session = resp_session.json()
-            session_manager.add_to_active_sessions(js_session)
+            session_manager.add_active_session(js_session)
         else:
             error = f'创建JumpServer会话失败, ' \
                     f'响应状态码: {resp_session.status_code}, ' \
                     f'text: {resp_session.text}, ' \
                     f'连接失败'
             logger.error(error, exc_info=True)
+            # delete
+            omnidb_manager.database_manager.delete_user(v_user_id)
+            omnidb_manager.database_manager.delete_connection(conn_id)
             return HttpResponse(error)
     except Exception as exc:
         error = f'创建JumpServer会话异常({str(exc)})'
         logger.error(error, exc_info=True)
+        # delete
+        omnidb_manager.database_manager.delete_user(v_user_id)
+        omnidb_manager.database_manager.delete_connection(conn_id)
         return HttpResponse(error)
 
     logger.info('保存JumpServer信息到OmniDB用户Session')
@@ -333,6 +348,9 @@ def workspace(request):
         'js_session': js_session
     }
     v_session.js_v_connections[conn_id] = js_v_connection
+
+    logger.info(f'添加OmniDB用户({v_user_id})conn_id({conn_id})')
+    omnidb_manager.user_manager.add_user_active_conn_id(user_id=v_user_id, conn_id=conn_id)
 
     logger.info(f'设置默认打开的conn_id({conn_id})')
     v_session.js_v_default_open_conn_id = conn_id
