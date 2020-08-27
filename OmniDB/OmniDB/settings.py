@@ -246,3 +246,4 @@ THREAD_POOL_MAX_WORKERS        = custom_settings.THREAD_POOL_MAX_WORKERS
 # JumpServer PARAMETERS
 DATA_DIR = os.path.dirname(HOME_DIR)
 JUMPSERVER_KEY_FILE            = os.path.join(DATA_DIR, 'key', 'omnidb.key')
+REPLAY_DIR                     = os.path.join(DATA_DIR, 'media', 'replay')

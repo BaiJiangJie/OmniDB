@@ -1,5 +1,9 @@
 import os
+import gzip
 from django.conf import settings
+import logging
+
+logger = logging.getLogger('JumpServer_app.utils')
 
 
 def convert_db_type(db_type):
@@ -21,13 +25,8 @@ def get_request_ip(request):
     return login_ip
 
 
-def read_access_key_from_file():
-    key_file = settings.JUMPSERVER_KEY_FILE
-    if os.path.exists(key_file):
-        with open(key_file, 'r') as f:
-            access_key = f.read()
-    else:
-        access_key = None
-
-    return access_key
-
+def gzip_file(src_path, dst_path, unlink_ori=True):
+    with open(src_path, 'rt') as src, gzip.open(dst_path, 'at') as dst:
+        dst.writelines(src)
+    if unlink_ori:
+        os.unlink(src_path)

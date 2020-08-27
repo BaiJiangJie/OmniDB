@@ -1,4 +1,5 @@
 import logging
+import datetime
 from .. import service
 
 
@@ -25,6 +26,21 @@ class SessionManager(object):
     @staticmethod
     def create_session(data):
         return service.client.jumpserver_client.create_session(data)
+
+    @staticmethod
+    def finish_session(session_id):
+        data = {
+            'is_finished': True,
+            'date_end': datetime.datetime.now(),
+        }
+        return service.client.jumpserver_client.update_session(session_id, data)
+
+    @staticmethod
+    def finish_session_replay_upload(session_id):
+        data = {
+            'has_replay': True
+        }
+        return service.client.jumpserver_client.update_session(session_id, data)
 
 
 session_manager = SessionManager()

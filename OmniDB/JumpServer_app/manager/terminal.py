@@ -71,6 +71,11 @@ class TerminalManager(object):
         storage_type = config['TERMINAL_COMMAND_STORAGE']['TYPE']
         return storage_type
 
+    def get_config_replay_storage_type(self):
+        config = self.get_config()
+        storage_type = config['TERMINAL_REPLAY_STORAGE']['TYPE']
+        return storage_type
+
     def start_timing_fetch_config_thread(self):
         t = threading.Thread(target=self.start_fetch_config)
         t.setDaemon(True)
@@ -96,6 +101,8 @@ class TerminalManager(object):
         t.start()
 
     def start_keep_heartbeat(self):
+        # 等待获取终端配置线程执行完成后再执行
+        time.sleep(5)
         while True:
             try:
                 logger.debug('保持终端心跳')

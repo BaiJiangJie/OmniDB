@@ -19,7 +19,7 @@ class JumpServerRequester(object):
     def __init__(self):
         self._key_file = settings.JUMPSERVER_KEY_FILE
 
-        self._allowed_method = ['get', 'post']
+        self._allowed_method = ['get', 'post', 'patch']
         self._host = None
         self._auth = None
         self._headers = None
@@ -38,21 +38,20 @@ class JumpServerRequester(object):
         self.set_host(host)
 
     def init_auth(self):
-        access_key = utils.read_access_key_from_file()
-        if access_key is None:
-            return
+        if not os.path.exists(self._key_file):
+            logger.error(f'AccessKey文件不存在({self._key_file})')
         try:
+            with open(self._key_file, 'r') as f:
+                access_key = f.read()
             access_key_id, access_key_secret = access_key.split(':')
-        except Exception as exc:
-            logger.error('获取access_key异常: {}'.format(str(exc)), exc_info=True)
-            return
-        else:
             signature_headers = ['(request-target)', 'accept', 'date', 'host']
             auth = HTTPSignatureAuth(
                 key_id=access_key_id, secret=access_key_secret,
                 algorithm='hmac-sha256', headers=signature_headers
             )
             self.set_auth(auth)
+        except Exception as exc:
+            logger.error(f'初始化请求auth出现异常: {str(exc)}', exc_info=True)
 
     def init_headers(self):
         headers = {
@@ -85,17 +84,15 @@ class JumpServerRequester(object):
     def _raw_requests(self, method, url, *args, **kwargs):
         method = method.lower()
         if method not in self._allowed_method:
-            logger.debug('请求方法不被允许: {}'.format(method))
-            return None
+            logger.error('请求方法不被允许: {}'.format(method))
+            return
 
-        url = self.build_url(url)
         try:
-            response = getattr(requests, method)(url, *args, **kwargs)
+            url = self.build_url(url)
+            return getattr(requests, method)(url, *args, **kwargs)
         except Exception as exc:
-            logger.error('请求异常: {}'.format(str(exc)), exc_info=True)
+            logger.error(f'请求异常: {str(exc)}')
             raise
-        else:
-            return response
 
     def _requests_by_access_key(self, method, url, *args, **kwargs):
         kwargs.update({'auth': self.get_auth(), 'headers': self.get_headers()})
@@ -131,6 +128,10 @@ class JumpServerRequester(object):
         session_url = urls.URL_SESSION
         return self._requests_by_access_key(method='post', url=session_url, data=data)
 
+    def patch_session(self, _id, data):
+        session_detail_url = urls.URL_SESSION_DETAIL.format(session_id=_id)
+        return self._requests_by_access_key(method='patch', url=session_detail_url, data=data)
+
     def post_command(self, data):
         command_url = urls.URL_COMMAND
         if not isinstance(data, list):
@@ -155,6 +156,10 @@ class JumpServerRequester(object):
     def post_terminal_status(self, data):
         terminal_status_url = urls.URL_TERMINAL_STATUS
         return self._requests_by_access_key(method='post', url=terminal_status_url, json=data)
+
+    def post_replay(self, session_id, files):
+        session_replay_url = urls.URL_SESSION_REPLAY.format(session_id=session_id)
+        return self._requests_by_access_key(method='post', url=session_replay_url, files=files)
 
 
 class JumpServerClient(object):
@@ -186,6 +191,9 @@ class JumpServerClient(object):
     def create_session(self, data):
         return self.requester.post_session(data)
 
+    def update_session(self, _id, data):
+        return self.requester.patch_session(_id, data)
+
     def registry_terminal(self):
         return self.requester.post_terminal()
 
@@ -197,7 +205,7 @@ class JumpServerClient(object):
             else:
                 return False
         except Exception as exc:
-            logger.error(f'校验终端有效性异常: ({str(exc)})', exc_info=True)
+            logger.error(f'校验终端有效性异常: ({str(exc)})')
             return False
 
     def fetch_terminal_config(self):
@@ -212,6 +220,12 @@ class JumpServerClient(object):
         command['input'] = command['input'][:128]
         command['output'] = command['output'][:1024]
         return self.requester.post_command(command)
+
+    def upload_replay(self, file_path_gz, target):
+        session_id = os.path.basename(target).split('.')[0]
+        with open(file_path_gz, 'rb') as f:
+            files = {'file': f}
+            return self.requester.post_replay(session_id, files=files)
 
 
 jumpserver_client = JumpServerClient()

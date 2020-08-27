@@ -42,6 +42,9 @@ sys.path.append('OmniDB_app/include')
 from OmniDB_app.include import paramiko
 from OmniDB_app.include import custom_paramiko_expect
 from JumpServer_app.manager.command import command_manager
+from JumpServer_app.manager.replay import replay_manager
+from JumpServer_app.manager.session import session_manager
+
 
 class StoppableThread(threading.Thread):
     def __init__(self,p1,p2,p3):
@@ -175,17 +178,17 @@ def thread_dispatcher(self,args,ws_object):
         #Login request
         if v_code == request.Login:
             ws_object.v_user_key = v_data
-            #: JIANGJIE ANNOTATION :#
-            #: 设置WS@v_conn_id值
-            ws_object.v_conn_id = json_object.get('v_conn_id')
             try:
                 v_session = SessionStore(session_key=v_data)['omnidb_session']
                 ws_object.v_session = v_session
+                v_conn_id = json_object.get('v_conn_id')
+                ws_object.on_login(v_conn_id)
                 v_response['v_code'] = response.LoginResult
                 ws_object.v_list_tab_objects = dict([])
                 ws_object.terminal_command_list = []
                 ws_object.event_loop.add_callback(send_response_thread_safe,ws_object,json.dumps(v_response))
-            except Exception:
+            except Exception as exc:
+                logger.error(f'WSLogin出现异常: {str(exc)}', exc_info=True)
                 v_response['v_code'] = response.SessionMissing
                 ws_object.event_loop.add_callback(send_response_thread_safe,ws_object,json.dumps(v_response))
         elif v_code == request.Ping:
@@ -585,9 +588,6 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     self.event_loop = tornado.ioloop.IOLoop.instance()
     spawn_thread = False
 
-    #: 记录当前WS:client对应的conn_id: WS:Login时赋值: WS:on_close和record_command中使用
-    self.v_conn_id = None
-
     lock = threading.Lock()
     self.terminal_lock = lock
     self.terminal_lock.acquire()
@@ -640,6 +640,8 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         except Exception as exc:
             None
 
+        self.on_logout()
+
         #removing client object from list of clients
         try:
             del connection_list[self.client_id]
@@ -654,11 +656,28 @@ class WSHandler(tornado.websocket.WebSocketHandler):
   def check_origin(self, origin):
     return True
 
+  @property
+  def js_v_connection(self):
+      return self.v_session.js_v_connections[self.v_conn_id]
+
+  @property
+  def js_session_id(self):
+      return self.js_v_connection['js_session']['id']
+
+  @property
+  def db_type(self):
+      return self.v_session.v_databases[self.v_conn_id]['database'].v_db_type
+
+  def on_login(self, v_conn_id):
+      """ WS 登录时做一些处理操作 """
+      self.v_conn_id = v_conn_id
+      replay_manager.start_replay(self.js_session_id)
+
   def get_command(self, cmd_input, cmd_output):
-      js_v_connection = self.v_session.js_v_connections[self.v_conn_id]
+      js_v_connection = self.js_v_connection
 
       #: Pretty cmd input output
-      pretty_cmd_input = command_manager.pretty_cmd_input(cmd_input)
+      pretty_cmd_input = command_manager.pretty_cmd_input(cmd_input, self.db_type)
       pretty_cmd_output = command_manager.pretty_cmd_output(cmd_output)
       command = {
           'user': f"{js_v_connection['js_user']['name']} ({js_v_connection['js_user']['username']})",
@@ -677,14 +696,34 @@ class WSHandler(tornado.websocket.WebSocketHandler):
       说明: 记录命令
       功能:
           - 记录命令
-          - TODO: 记录录像
+          - 记录录像
       """
-      logger.info('记录命令')
       command = self.get_command(cmd_input, cmd_output)
+      logger.info('记录命令')
       command_manager.record_command(command)
+      logger.info('记录录像')
+      replay_manager.record_replay(command)
 
-      #: TODO: 记录录像
-      logger.info('记录录像, 待开发')
+  def on_logout(self):
+      """ Ws 关闭是做一些收尾操作 """
+      session_id = self.js_session_id
+      try:
+          logger.info(f'完成Session({session_id})')
+          session_manager.finish_session(session_id)
+      except Exception as exc:
+          pass
+
+      try:
+          logger.info(f'结束Replay({session_id})')
+          replay_manager.end_replay(session_id)
+      except Exception as exc:
+          pass
+
+      try:
+          logger.info(f'完成Session录像上传({session_id})')
+          session_manager.finish_session_replay_upload(session_id)
+      except Exception as exc:
+          pass
 
 
 def start_wsserver_thread():
