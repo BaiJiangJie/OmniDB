@@ -659,18 +659,21 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
   @property
   def js_v_connection(self):
+      """ 当前conn_id和JumpServer关联的所有信息(database、system_user、session等等); 在view中添加 """
       return self.v_session.js_v_connections[self.v_conn_id]
 
   @property
   def js_session_id(self):
+      """ 当前conn_id对应的jumpserver_session_id"""
       return self.js_v_connection['js_session']['id']
 
   @property
   def db_type(self):
+      """ 当前conn_id对应所连接的数据库类型"""
       return self.v_session.v_databases[self.v_conn_id]['database'].v_db_type
 
   def on_login(self, v_conn_id):
-      """ WS 登录时做一些处理操作 """
+      """ WS Client 登录时做一些处理操作 """
       self.v_conn_id = v_conn_id
       session_id = self.js_session_id
       v_user_id = self.v_session.v_user_id
@@ -679,9 +682,10 @@ class WSHandler(tornado.websocket.WebSocketHandler):
           f'监听到用户WebSocket连接登录, session_id({session_id}), conn_id({v_conn_id}),'
           f' v_user_id({v_user_id}), v_user_key({v_user_key})'
       )
+      # 开启录像
       replay_manager.start_replay(session_id)
 
-  def get_command(self, cmd_input, cmd_output):
+  def construct_command(self, cmd_input, cmd_output):
       js_v_connection = self.js_v_connection
 
       #: Pretty cmd input output
@@ -706,14 +710,14 @@ class WSHandler(tornado.websocket.WebSocketHandler):
           - 记录命令
           - 记录录像
       """
-      command = self.get_command(cmd_input, cmd_output)
+      command = self.construct_command(cmd_input, cmd_output)
       logger.info('记录命令')
       command_manager.record_command(command)
       logger.info('记录录像')
       replay_manager.record_replay(command)
 
   def on_logout(self):
-      """ Ws 关闭是做一些收尾操作 """
+      """ Ws Client 关闭时做一些收尾操作 """
       session_id = self.js_session_id
       v_conn_id = self.v_conn_id
       v_user_id = self.v_session.v_user_id
@@ -732,6 +736,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
       try:
           logger.info(f'结束Replay({session_id})')
           replay_manager.end_replay(session_id)
+          replay_manager.remove_replay(session_id)
       except Exception as exc:
           logger.error(f'结束Replay出现异常({str(exc)})', exc_info=True)
 
@@ -749,10 +754,15 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
       try:
           logger.info(f'结束或保留OmniDB-User-Session')
-          omnidb_manager.try_end_session(v_user_id, v_user_key)
+          if omnidb_manager.user_has_active_conn_ids(v_user_id):
+              logger.info('保留OmniDB-User-Session')
+          else:
+              logger.info('结束OmniDB-User_session')
+              omnidb_manager.end_session(v_user_id)
+              logger.info('删除OmniDB-User-SessionStore')
+              SessionStore(session_key=v_user_key).delete()
       except Exception as exc:
           logger.info(f'结束或保留OmniDB-User-Session时出现异常({str(exc)})', exc_info=True)
-
 
 
 def start_wsserver_thread():

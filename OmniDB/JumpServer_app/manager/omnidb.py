@@ -93,11 +93,17 @@ class UserManager(object):
     def get_active_user(self, user_id):
         return self._active_users.get(user_id)
 
+    def has_active_user(self, user):
+        user = self.get_active_user(user.id)
+        if user is None:
+            return False
+        else:
+            return True
+
     def get_user(self, user_id):
         user = self.get_active_user(user_id)
         if user is None:
             user = User(user_id)
-            self.add_active_user(user)
         return user
 
     def get_user_active_conn_ids(self, user_id):
@@ -107,6 +113,8 @@ class UserManager(object):
     def add_user_active_conn_id(self, user_id, conn_id):
         user = self.get_user(user_id)
         user.add_active_conn_id(conn_id)
+        if not self.has_active_user(user):
+            self.add_active_user(user)
 
     def remove_user_active_conn_id(self, user_id, conn_id):
         user = self.get_user(user_id)
@@ -126,15 +134,21 @@ class OmniDBManager(object):
         self.database_manager.clear_datatable_related_conn_id(conn_id)
         self.user_manager.remove_user_active_conn_id(user_id=user_id, conn_id=conn_id)
 
-    def try_end_session(self, user_id, session_key):
+    def get_user_active_conn_ids(self, user_id):
         active_conn_ids = self.user_manager.get_user_active_conn_ids(user_id)
-        logger.info(f'用户活跃的conn_id数量({len(active_conn_ids)}), 列表({active_conn_ids})')
-        if len(active_conn_ids) == 0:
-            self.database_manager.clear_datatable_related_user_id(user_id)
-            logger.info('删除OmniDB-User-SessionStore')
-            SessionStore(session_key=session_key).delete()
+        return active_conn_ids
+
+    def user_has_active_conn_ids(self, user_id):
+        user_active_conn_ids = self.get_user_active_conn_ids(user_id)
+        user_active_conn_ids_count = len(user_active_conn_ids)
+        logger.info(f'用户活跃的conn_id数量({user_active_conn_ids_count}), 列表({user_active_conn_ids})')
+        if user_active_conn_ids_count > 0:
+            return True
         else:
-            logger.info('保留OmniDB-User-Session')
+            return False
+
+    def end_session(self, user_id):
+        self.database_manager.clear_datatable_related_user_id(user_id)
 
 
 omnidb_manager = OmniDBManager()

@@ -129,6 +129,9 @@ class ReplayManager(object):
     def add_replay(self, replay):
         self._replays[replay.session_id] = replay
 
+    def remove_replay(self, replay):
+        self._replays.pop(replay.id, None)
+
     def get_replay(self, session_id):
         return self._replays.get(session_id)
 
@@ -144,9 +147,12 @@ class ReplayManager(object):
 
     def end_replay(self, session_id):
         replay = self.get_replay(session_id)
-        replay.end()
-        replay.gzip()
-        replay.upload()
+        if replay:
+            replay.end()
+            replay.gzip()
+            replay.upload()
+        else:
+            logger.error(f'未获取到录像({session_id})')
 
 
 replay_manager = ReplayManager()
