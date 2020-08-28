@@ -757,7 +757,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
           if omnidb_manager.user_has_active_conn_ids(v_user_id):
               logger.info('保留OmniDB-User-Session')
           else:
-              logger.info('结束OmniDB-User_session')
+              logger.info('结束OmniDB-User-Session')
               omnidb_manager.end_session(v_user_id)
               logger.info('删除OmniDB-User-SessionStore')
               SessionStore(session_key=v_user_key).delete()

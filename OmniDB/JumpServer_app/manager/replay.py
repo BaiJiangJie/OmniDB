@@ -129,8 +129,8 @@ class ReplayManager(object):
     def add_replay(self, replay):
         self._replays[replay.session_id] = replay
 
-    def remove_replay(self, replay):
-        self._replays.pop(replay.id, None)
+    def remove_replay(self, session_id):
+        self._replays.pop(session_id, None)
 
     def get_replay(self, session_id):
         return self._replays.get(session_id)
