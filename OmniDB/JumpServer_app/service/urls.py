@@ -1,6 +1,7 @@
 URL_TERMINAL_REGISTRATION = '/api/v2/terminal/terminal-registrations/'
 URL_TERMINAL_CONFIG = '/api/v1/terminal/terminals/config/'
 URL_TERMINAL_STATUS = '/api/v1/terminal/status/'
+URL_TERMINAL_TASK_DETAIL = '/api/v1/terminal/tasks/{task_id}/'
 URL_USER_PROFILE = '/api/v1/users/profile/'
 URL_USER_DATABASE_PERMISSION_VALIDATE = '/api/v1/perms/database-app-permissions/user/validate/'
 URL_DATABASE_DETAIL = '/api/v1/applications/database-apps/{database_id}/'

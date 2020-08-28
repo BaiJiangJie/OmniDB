@@ -1,8 +1,9 @@
-import json
 import os
-import datetime
-import logging
 import time
+import json
+import logging
+import datetime
+import threading
 from django.conf import settings
 from .. import utils, service
 from .terminal import terminal_manager
@@ -12,26 +13,38 @@ logger = logging.getLogger('JumpServer_app.manager.replay')
 
 class Replay(object):
 
-    def __init__(self, session_id):
+    def __init__(self, session_id, replay_date=None):
+
         self.session_id = session_id
-        self.time_start = time.time()
-        self.filename = self.session_id
-        self.filename_gz = f'{self.filename}.replay.gz'
-        self.base_dir = settings.REPLAY_DIR
-        date = datetime.datetime.utcnow().strftime('%Y-%m-%d')
-        self.file_dir = os.path.join(self.base_dir, date)
-        self.make_file_dir()
-        self.file_path = os.path.join(self.file_dir, self.filename)
-        self.file_path_gz = os.path.join(self.file_dir, self.filename_gz)
-        self.upload_target = f'{date}/{self.filename_gz}'
-        self._f = open(self.file_path, 'at')
+
+        # 录像开始时间
+        self.time_start = None
+        # 录像文件对象
+        self._f = None
+
+        # 录像上传参数
+        if replay_date is None:
+            replay_date = datetime.datetime.utcnow().strftime('%Y-%m-%d')
+        replay_dir = os.path.join(settings.REPLAY_DIR, replay_date)
+        if not os.path.isdir(replay_dir):
+            os.makedirs(replay_dir, exist_ok=True)
+
+        self.filename = session_id
+        self.filepath = os.path.join(replay_dir, self.filename)
+
+        self.gz_filename = f'{session_id}.replay.gz'
+        self.gz_filepath = os.path.join(replay_dir, self.gz_filename)
+
+        self.upload_target = f'{replay_date}/{self.gz_filename}'
 
         self.upload_failed_count = 0
         self.try_times = 3
 
-    def make_file_dir(self):
-        if not os.path.isdir(self.file_dir):
-            os.makedirs(self.file_dir, exist_ok=True)
+    def _open(self):
+        self._f = open(self.filepath, 'at')
+
+    def _close(self):
+        self._f.close()
 
     def _write(self, message):
         self._f.write(message)
@@ -42,6 +55,8 @@ class Replay(object):
         self._write(record)
 
     def start(self):
+        self.time_start = time.time()
+        self._open()
         self._write('{')
 
     def record(self, command):
@@ -54,19 +69,19 @@ class Replay(object):
         logger.info('结束记录录像')
         self._write('"0":""')
         self._write('}')
-        self._f.close()
+        self._close()
 
     def gzip(self):
-        logger.info('压缩录像文件')
-        utils.gzip_file(self.file_path, self.file_path_gz)
-        logger.info(f'压缩录像文件路径({self.file_path_gz})')
+        logger.info(f'压缩录像文件({self.filepath})')
+        utils.gzip_file(self.filepath, self.gz_filepath)
+        logger.info(f'录像文件压缩完成({self.gz_filepath})')
 
     @staticmethod
     def get_storage_type():
         return terminal_manager.get_config_replay_storage_type()
 
     def upload_to_server(self):
-        return service.client.jumpserver_client.upload_replay(self.file_path_gz, self.upload_target)
+        return service.client.jumpserver_client.upload_replay(self.gz_filepath, self.upload_target)
 
     @staticmethod
     def upload_to_null():
@@ -90,27 +105,28 @@ class Replay(object):
     def increase_upload_failed_count(self):
         self.upload_failed_count += 1
 
-    def delete_file_gz(self):
-        logger.info(f'删除录像压缩文件({self.file_path_gz})')
-        os.unlink(self.file_path_gz)
+    def delete_gz_file(self):
+        logger.info(f'删除录像压缩文件({self.gz_filepath})')
+        os.unlink(self.gz_filepath)
 
     def upload(self):
-        logger.info('上传录像文件')
-        if not os.path.isfile(self.file_path_gz):
-            logger.error(f'没有发现录像文件({self.file_path_gz})')
+        logger.info('上传录像')
+        if not os.path.isfile(self.gz_filepath):
+            self.gzip()
+
+        if os.path.getsize(self.gz_filepath) == 0:
+            logger.error(f'录像压缩文件大小为0({self.gz_filepath})')
+            self.delete_gz_file()
             return
-        if os.path.getsize(self.file_path_gz) == 0:
-            logger.error(f'录像文件大小为0({self.file_path_gz})')
-            self.delete_file_gz()
-            return
+
         while True:
             ok = self._upload()
             if ok:
-                logger.info('录像上传成功')
-                self.delete_file_gz()
+                logger.info(f'录像上传成功({self.gz_filepath})')
+                self.delete_gz_file()
                 return True
             else:
-                logger.error('录像上传失败')
+                logger.error(f'录像上传失败({self.gz_filepath})')
                 self.increase_upload_failed_count()
                 if self.upload_failed_count <= self.try_times:
                     logger.info(f'重试上传录像({self.upload_failed_count}/{self.try_times})')
@@ -137,8 +153,8 @@ class ReplayManager(object):
 
     def start_replay(self, session_id):
         replay = Replay(session_id)
-        self.add_replay(replay)
         replay.start()
+        self.add_replay(replay)
 
     def record_replay(self, command):
         session_id = command['session']
@@ -149,10 +165,41 @@ class ReplayManager(object):
         replay = self.get_replay(session_id)
         if replay:
             replay.end()
-            replay.gzip()
             replay.upload()
         else:
             logger.error(f'未获取到录像({session_id})')
+
+    def start_remain_replay_upload_thread(self):
+        """ 开启遗留录像上传处理线程 """
+        t = threading.Thread(target=self.start_remain_replay_upload)
+        t.setDaemon(True)
+        t.start()
+        return t
+
+    def start_remain_replay_upload(self):
+        """ 开启遗留录像上传处理 """
+        logger.info('开启遗留录像上传处理')
+
+        replay_dir = settings.REPLAY_DIR
+
+        if not os.path.isdir(replay_dir):
+            return
+
+        for replay_date in os.listdir(replay_dir):
+            replay_date_dir = os.path.join(replay_dir, replay_date)
+            for replay_file in os.listdir(replay_date_dir):
+                try:
+                    replay_filepath = os.path.join(replay_date_dir, replay_file)
+                    logger.info(f'上传遗留录像({replay_filepath})')
+                    session_id = replay_file[:36]
+                    replay = Replay(session_id=session_id, replay_date=replay_date)
+                    replay.upload()
+                except Exception as exc:
+                    logger.error(f'上传遗留录像出现异常({str(exc)})')
+
+            if len(os.listdir(replay_date_dir)) == 0:
+                logger.info(f'录像文件目录({replay_date_dir})中的录像已全部上传完成, 删除目录')
+                os.rmdir(replay_date_dir)
 
 
 replay_manager = ReplayManager()

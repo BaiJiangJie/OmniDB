@@ -369,6 +369,10 @@ class DjangoApplication(object):
             if not ok:
                 sys.exit()
 
+            ok = JumpServer_app.startup.fetch_terminal_config()
+            if not ok:
+                sys.exit()
+
             logger.info('开启定时获取终端配置线程')
             JumpServer_app.startup.start_timing_fetch_terminal_config_thread()
 
@@ -377,6 +381,9 @@ class DjangoApplication(object):
 
             logger.info('开启命令上传处理线程')
             JumpServer_app.startup.start_command_upload_thread()
+
+            logger.info('开启遗留录像上传处理线程')
+            JumpServer_app.startup.start_remain_replay_upload_thread()
 
             #: TODO: 上传录像: 遗留
 

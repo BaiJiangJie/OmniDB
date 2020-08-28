@@ -10,6 +10,22 @@ class SessionManager(object):
 
     def __init__(self):
         self.active_sessions = {}
+        self.ws_objects = {}
+
+    def add_ws_object(self, session_id, ws_object):
+        self.ws_objects[session_id] = ws_object
+
+    def remove_ws_object(self, session_id):
+        self.ws_objects.pop(session_id, None)
+
+    def get_ws_object(self, session_id):
+        return self.ws_objects.get(session_id)
+
+    def terminate_ws_object(self, session_id):
+        ws_object = self.get_ws_object(session_id)
+        if ws_object is None:
+            return
+        ws_object.on_terminate()
 
     def add_active_session(self, session):
         self.active_sessions[session['id']] = session
@@ -29,18 +45,11 @@ class SessionManager(object):
 
     @staticmethod
     def finish_session(session_id):
-        data = {
-            'is_finished': True,
-            'date_end': datetime.datetime.now(),
-        }
-        return service.client.jumpserver_client.update_session(session_id, data)
+        return service.client.jumpserver_client.finish_session(session_id)
 
     @staticmethod
     def finish_session_replay_upload(session_id):
-        data = {
-            'has_replay': True
-        }
-        return service.client.jumpserver_client.update_session(session_id, data)
+        return service.client.jumpserver_client.finish_session_replay_upload(session_id)
 
 
 session_manager = SessionManager()

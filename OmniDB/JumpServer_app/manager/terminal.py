@@ -4,6 +4,7 @@ import logging
 import threading
 from django.conf import settings
 from .. import service
+from .session import session_manager
 
 logger = logging.getLogger('JumpServer_app.manager.terminal')
 
@@ -43,10 +44,10 @@ class TerminalManager(object):
                 return True
             else:
                 error = f'注册终端响应不符合预期, 响应状态码: ({resp_terminal.status_code}), text: ({resp_terminal.text})'
-                logger.error(error, exc_info=True)
+                logger.error(error)
                 return False
         except Exception as exc:
-            logger.error(f'执行终端注册异常: ({str(exc)})', exc_info=True)
+            logger.error(f'执行终端注册异常: ({str(exc)})')
             return False
 
     @staticmethod
@@ -56,7 +57,8 @@ class TerminalManager(object):
         return service.client.jumpserver_client.check_terminal_validity()
 
     def set_config(self, config):
-        self.config = config
+        if isinstance(config, dict):
+            self.config = config
 
     def get_config(self):
         return self.config
@@ -77,23 +79,31 @@ class TerminalManager(object):
         return storage_type
 
     def start_timing_fetch_config_thread(self):
-        t = threading.Thread(target=self.start_fetch_config)
+        t = threading.Thread(target=self.start_timing_fetch_config)
         t.setDaemon(True)
         t.start()
 
-    def start_fetch_config(self):
+    def start_timing_fetch_config(self):
         while True:
-            try:
-                logger.debug('定时获取终端配置')
-                resp_config = service.client.jumpserver_client.fetch_terminal_config()
-                if resp_config.status_code == 200:
-                    config = resp_config.json()
-                    self.set_config(config)
-                else:
-                    logger.error(f'获取终端配置失败, 响应状态码: ({resp_config.status_code}), text: ({resp_config.text})')
-            except Exception as exc:
-                logger.error(f'获取终端配置出现异常: ({str(exc)})', exc_info=True)
+            logger.debug('定时获取终端配置')
+            config = self.fetch_config()
+            self.set_config(config)
             time.sleep(10)
+
+    @staticmethod
+    def fetch_config():
+        try:
+            logger.info('获取终端配置')
+            resp_config = service.client.jumpserver_client.fetch_terminal_config()
+            if resp_config.status_code == 200:
+                config = resp_config.json()
+                return config
+            else:
+                logger.error(f'获取终端配置失败, 响应状态码: ({resp_config.status_code}), text: ({resp_config.text})')
+                return None
+        except Exception as exc:
+            logger.error(f'获取终端配置出现异常: ({str(exc)})')
+            return None
 
     def start_keep_heartbeat_thread(self):
         t = threading.Thread(target=self.start_keep_heartbeat)
@@ -101,20 +111,39 @@ class TerminalManager(object):
         t.start()
 
     def start_keep_heartbeat(self):
-        # 等待获取终端配置线程执行完成后再执行
-        time.sleep(5)
         while True:
             try:
                 logger.debug('保持终端心跳')
                 resp_heartbeat = service.client.jumpserver_client.keep_terminal_heartbeat()
                 if resp_heartbeat.status_code == 201:
-                    pass
+                    session_tasks = resp_heartbeat.json()
+                    logger.debug(f'保持终端心跳响应({session_tasks})')
+                    self.handle_terminal_tasks(session_tasks)
                 else:
                     logger.error(f'保持终端心跳失败, 响应状态码: ({resp_heartbeat.status_code}), text: ({resp_heartbeat.text})')
             except Exception as exc:
-                logger.error(f'保持终端心跳出现异常: ({str(exc)})', exc_info=True)
+                logger.error(f'保持终端心跳出现异常: ({str(exc)})')
             heartbeat_interval = self.get_config_heartbeat_interval()
             time.sleep(heartbeat_interval)
+
+    def handle_terminal_tasks(self, session_tasks):
+        for task in session_tasks:
+            task_id = task['id']
+            task_name = task['name']
+            session_id = task['args']
+            if task_name == 'kill_session':
+                self.handle_terminal_task_kill_session(task_id, session_id)
+
+    def handle_terminal_task_kill_session(self, task_id, session_id):
+        try:
+            msg = f'处理终端任务[kill_session](task_id:{task_id};session_id:{session_id}))'
+            logger.info(msg)
+            logger.info(f'终断WebSocket(session_id:{session_id})')
+            session_manager.terminate_ws_object(session_id)
+            logger.info(f'完成终端任务(task_id:{task_id})')
+            service.client.jumpserver_client.finish_terminal_task(task_id)
+        except Exception as exc:
+            logger.error(f'处理终端任务[kill_session]出现异常({str(exc)})')
 
 
 terminal_manager = TerminalManager()

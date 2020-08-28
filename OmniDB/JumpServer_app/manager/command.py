@@ -31,7 +31,7 @@ class Command(object):
                 return False
         except Exception as exc:
             error = f'命令上传出现异常: ({str(exc)})'
-            logger.error(error, exc_info=True)
+            logger.error(error)
             return False
 
     @staticmethod

@@ -1,6 +1,7 @@
 import os
 import socket
 import logging
+import datetime
 from django.conf import settings
 from httpsig.requests_auth import HTTPSignatureAuth
 from OmniDB import jumpserver_settings
@@ -161,6 +162,10 @@ class JumpServerRequester(object):
         session_replay_url = urls.URL_SESSION_REPLAY.format(session_id=session_id)
         return self._requests_by_access_key(method='post', url=session_replay_url, files=files)
 
+    def patch_terminal_task(self, _id, data):
+        terminal_task_url = urls.URL_TERMINAL_TASK_DETAIL.format(task_id=_id)
+        return self._requests_by_access_key(method='patch', url=terminal_task_url, data=data)
+
 
 class JumpServerClient(object):
     """ JumpServer Client (业务层面) """
@@ -194,6 +199,19 @@ class JumpServerClient(object):
     def update_session(self, _id, data):
         return self.requester.patch_session(_id, data)
 
+    def finish_session(self, _id):
+        data = {
+            'is_finished': True,
+            'date_end': datetime.datetime.now(),
+        }
+        return self.update_session(_id, data)
+
+    def finish_session_replay_upload(self, _id):
+        data = {
+            'has_replay': True
+        }
+        return self.update_session(_id, data)
+
     def registry_terminal(self):
         return self.requester.post_terminal()
 
@@ -226,6 +244,16 @@ class JumpServerClient(object):
         with open(file_path_gz, 'rb') as f:
             files = {'file': f}
             return self.requester.post_replay(session_id, files=files)
+
+    def update_terminal_task(self, _id, data):
+        return self.requester.patch_terminal_task(_id, data)
+
+    def finish_terminal_task(self, _id):
+        data = {
+            'is_finished': True,
+            'date_finished': ''
+        }
+        return self.update_terminal_task(_id, data)
 
 
 jumpserver_client = JumpServerClient()

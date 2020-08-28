@@ -103,6 +103,8 @@ class response(IntEnum):
   TerminalResult      = 12
   Pong                = 13
 
+  BeTerminated         = 20
+
 class debugState(IntEnum):
   Initial  = 0
   Starting = 1
@@ -663,9 +665,13 @@ class WSHandler(tornado.websocket.WebSocketHandler):
       return self.v_session.js_v_connections[self.v_conn_id]
 
   @property
+  def js_session(self):
+      return self.js_v_connection['js_session']
+
+  @property
   def js_session_id(self):
       """ 当前conn_id对应的jumpserver_session_id"""
-      return self.js_v_connection['js_session']['id']
+      return self.js_session['id']
 
   @property
   def db_type(self):
@@ -682,6 +688,12 @@ class WSHandler(tornado.websocket.WebSocketHandler):
           f'监听到用户WebSocket连接登录, session_id({session_id}), conn_id({v_conn_id}),'
           f' v_user_id({v_user_id}), v_user_key({v_user_key})'
       )
+      logger.info(f'添加活跃Session({self.js_session_id})')
+      session_manager.add_active_session(self.js_session)
+      logger.info(f'添加Session和WebSocket对象关系')
+      session_manager.add_ws_object(session_id, self)
+      logger.info(f'添加OmniDB用户({v_user_id})conn_id({v_conn_id})')
+      omnidb_manager.user_manager.add_user_active_conn_id(user_id=v_user_id, conn_id=v_conn_id)
       # 开启录像
       replay_manager.start_replay(session_id)
 
@@ -728,23 +740,24 @@ class WSHandler(tornado.websocket.WebSocketHandler):
       )
       try:
           logger.info(f'完成Session({session_id})')
+          session_manager.remove_ws_object(session_id)
           session_manager.finish_session(session_id)
           session_manager.remove_active_session(session_id)
       except Exception as exc:
-          logger.error(f'完成Session出现异常({str(exc)})', exc_info=True)
+          logger.error(f'完成Session出现异常({str(exc)})')
 
       try:
           logger.info(f'结束Replay({session_id})')
           replay_manager.end_replay(session_id)
           replay_manager.remove_replay(session_id)
       except Exception as exc:
-          logger.error(f'结束Replay出现异常({str(exc)})', exc_info=True)
+          logger.error(f'结束Replay出现异常({str(exc)})')
 
       try:
           logger.info(f'完成Session录像上传({session_id})')
           session_manager.finish_session_replay_upload(session_id)
       except Exception as exc:
-          logger.error(f'完成Session录像上传出现异常({str(exc)})', exc_info=True)
+          logger.error(f'完成Session录像上传出现异常({str(exc)})')
 
       try:
           logger.info(f'结束OmniDB-Connection')
@@ -763,6 +776,21 @@ class WSHandler(tornado.websocket.WebSocketHandler):
               SessionStore(session_key=v_user_key).delete()
       except Exception as exc:
           logger.info(f'结束或保留OmniDB-User-Session时出现异常({str(exc)})', exc_info=True)
+
+  def on_terminate(self):
+      # TODO: 什么地方可以真正终断wb_socket, 返回给前端消息
+      session_id = self.js_session_id
+      v_conn_id = self.v_conn_id
+      v_response = {
+          'v_code': 0,
+          'v_context_code': 0,
+          'v_error': False,
+          'v_data': 1
+      }
+      logger.info(f'监听到WebSocket对象连接被终断(session_id:{session_id};conn_id:{v_conn_id})')
+      v_response['v_code'] = response.MessageException
+      v_response['v_data'] = '会话被终断'
+      self.event_loop.add_callback(send_response_thread_safe, self, json.dumps(v_response))
 
 
 def start_wsserver_thread():

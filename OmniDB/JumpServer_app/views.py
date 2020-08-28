@@ -52,7 +52,7 @@ def workspace(request):
             return HttpResponse(error)
     except Exception as exc:
         error = f'获取用户信息异常: {str(exc)}, 连接失败'
-        logger.error(error, exc_info=True)
+        logger.error(error)
         return HttpResponse(error)
 
     try:
@@ -64,11 +64,11 @@ def workspace(request):
             pass
         elif resp_permission.status_code == 403:
             error = '校验用户数据库权限未通过, 无权限, 连接失败'
-            logger.error(error, exc_info=True)
+            logger.error(error)
             return HttpResponse(error)
         elif resp_permission.status_code == 404:
             error = f'校验用户数据库权限失败, 资源未找到: {resp_permission.text}, 连接失败'
-            logger.error(error, exc_info=True)
+            logger.error(error)
             return HttpResponse(error)
         else:
             error = f'校验用户数据库权限失败, ' \
@@ -79,7 +79,7 @@ def workspace(request):
             return HttpResponse(error)
     except Exception as exc:
         error = f'校验用户数据库权限异常: {str(exc)}, 连接失败'
-        logger.error(error, exc_info=True)
+        logger.error(error)
         return HttpResponse(error)
 
     #: 数据库: JumpServer
@@ -104,7 +104,7 @@ def workspace(request):
             return HttpResponse(error)
     except Exception as exc:
         error = f'获取数据库信息异常: {str(exc)}, 连接失败'
-        logger.error(error, exc_info=True)
+        logger.error(error)
         return HttpResponse(error)
 
     try:
@@ -140,7 +140,7 @@ def workspace(request):
             return HttpResponse(error)
     except Exception as exc:
         error = f'获取系统用户信息异常: {str(exc)}, 连接失败'
-        logger.error(error, exc_info=True)
+        logger.error(error)
         return HttpResponse(error)
 
     # TODO: 操作过程中，如果出现异常，则删除OmniDB中对应数据
@@ -321,20 +321,19 @@ def workspace(request):
         resp_session = session_manager.create_session(data)
         if resp_session.status_code == 201:
             js_session = resp_session.json()
-            session_manager.add_active_session(js_session)
         else:
             error = f'创建JumpServer会话失败, ' \
                     f'响应状态码: {resp_session.status_code}, ' \
                     f'text: {resp_session.text}, ' \
                     f'连接失败'
-            logger.error(error, exc_info=True)
+            logger.error(error)
             # delete
             omnidb_manager.database_manager.delete_user(v_user_id)
             omnidb_manager.database_manager.delete_connection(conn_id)
             return HttpResponse(error)
     except Exception as exc:
         error = f'创建JumpServer会话异常({str(exc)})'
-        logger.error(error, exc_info=True)
+        logger.error(error)
         # delete
         omnidb_manager.database_manager.delete_user(v_user_id)
         omnidb_manager.database_manager.delete_connection(conn_id)
@@ -348,9 +347,6 @@ def workspace(request):
         'js_session': js_session
     }
     v_session.js_v_connections[conn_id] = js_v_connection
-
-    logger.info(f'添加OmniDB用户({v_user_id})conn_id({conn_id})')
-    omnidb_manager.user_manager.add_user_active_conn_id(user_id=v_user_id, conn_id=conn_id)
 
     logger.info(f'设置默认打开的conn_id({conn_id})')
     v_session.js_v_default_open_conn_id = conn_id
