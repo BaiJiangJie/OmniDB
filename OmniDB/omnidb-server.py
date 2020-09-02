@@ -385,8 +385,6 @@ class DjangoApplication(object):
             logger.info('开启遗留录像上传处理线程')
             JumpServer_app.startup.start_remain_replay_upload_thread()
 
-            #: TODO: 上传录像: 遗留
-
             #: 启动Web Server
             cherrypy.engine.start()
 

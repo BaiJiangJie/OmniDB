@@ -8,6 +8,7 @@ from math import ceil
 import json
 
 import sys
+import logging
 
 import OmniDB_app.include.Spartacus as Spartacus
 import OmniDB_app.include.Spartacus.Database as Database
@@ -21,6 +22,9 @@ import sqlparse
 import random
 import string
 import platform
+
+logger = logging.getLogger('OmniDB_app.views.workspace')
+
 
 def index(request):
     #Invalid session
@@ -124,7 +128,7 @@ def index(request):
     }
 
     #wiping tab connection list
-    v_session.v_tab_connections = dict([])
+    # v_session.v_tab_connections = dict([])
     request.session['omnidb_session'] = v_session
 
     template = loader.get_template('OmniDB_app/workspace.html')

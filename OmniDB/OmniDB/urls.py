@@ -15,9 +15,15 @@ Including another URLconf
 """
 from django.conf.urls import include, url
 from django.contrib import admin
+from django.conf import settings
+
+if settings.PATH == '':
+    v_url = ''
+else:
+    v_url = settings.PATH[1:]
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^omnidb/', include('JumpServer_app.urls')),
+    url(r'^{}/jumpserver/'.format(v_url), include('JumpServer_app.urls')),
     url(r'^', include('OmniDB_app.urls'))
 ]
