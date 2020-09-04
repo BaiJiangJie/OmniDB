@@ -9,7 +9,7 @@ WORKDIR /opt/omnidb
 
 COPY . .
 RUN useradd omnidb
-RUN pip install --upgrade pip setuptools wheel -i ${PIP_MIRROR} && pip install -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel -i ${PIP_MIRROR} && pip install -i ${PIP_MIRROR} -r requirements.txt
 
 VOLUME /opt/omnidb/data
 
