@@ -21,4 +21,4 @@ EXPOSE 25482
 
 WORKDIR /opt/omnidb/OmniDB
 
-ENTRYPOINT ["python3", "omnidb-server.py", "-d", "/opt/omnidb/data"]
+#ENTRYPOINT ["python3", "omnidb-server.py", "-d", "/opt/omnidb/data"]
