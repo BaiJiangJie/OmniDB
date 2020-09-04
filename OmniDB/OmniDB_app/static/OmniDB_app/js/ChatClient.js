@@ -339,6 +339,9 @@ function startChatWebSocket(p_port) {
     var v_address = '';
     var v_channel = '';
 
+    var v_port = window.location.port
+
+
     if(v_is_secure) {
 		v_address = 'wss://' + window.location.hostname;
         v_channel = 'chatwss';
@@ -350,7 +353,7 @@ function startChatWebSocket(p_port) {
 
     v_chatWebSocket  = createWebSocket(
         v_address,
-        p_port,
+        v_port,
         function(p_event) {//Open
             chatLogin();
 

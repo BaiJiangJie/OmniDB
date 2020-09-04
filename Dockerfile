@@ -1,28 +1,24 @@
-FROM debian:stable-slim
-
+FROM registry.fit2cloud.com/public/python:v3-sqlite
+MAINTAINER Jumpserver Team <jiangjie.bai@fit2cloud.com>
 ENV OMNIDB_VERSION=2.17.0
-ENV SERVICE_USER=omnidb
 
-WORKDIR /${SERVICE_USER}
+ARG PIP_MIRROR=https://pypi.douban.com/simple
+ENV PIP_MIRROR=$PIP_MIRROR
 
-RUN  adduser --system --home /${SERVICE_USER} --no-create-home ${SERVICE_USER} \
-  && mkdir -p /${SERVICE_USER} \
-  && chown -R ${SERVICE_USER}.root /${SERVICE_USER} \
-  && chmod -R g+w /${SERVICE_USER} \
-  && apt-get update \
-  && apt-get -y upgrade \
-  && apt-get install -y wget dumb-init \
-  && if [ ! -e '/bin/systemctl' ]; then ln -s /bin/echo /bin/systemctl; fi \
-  && rm -rf /var/lib/apt/lists/*
+WORKDIR /opt/omnidb
 
-RUN wget -q https://omnidb.org/dist/${OMNIDB_VERSION}/omnidb-server_${OMNIDB_VERSION}-debian-amd64.deb \
-  && dpkg -i omnidb-server_${OMNIDB_VERSION}-debian-amd64.deb \
-  && rm -rf omnidb-server_${OMNIDB_VERSION}-debian-amd64.deb
+COPY . .
+RUN useradd omnidb
+RUN pip install --upgrade pip setuptools wheel -i ${PIP_MIRROR} && pip install -r requirements.txt
 
-USER ${SERVICE_USER}
-  
-EXPOSE 8000
+VOLUME /opt/omnidb/data
+
+ENV LANG=zh_CN.UTF-8
+ENV LC_ALL=zh_CN.UTF-8
+
+EXPOSE 8080
 EXPOSE 25482
 
-ENTRYPOINT [ "/usr/bin/dumb-init", "--" ]
-CMD ["omnidb-server", "-H", "0.0.0.0"]
+WORKDIR /opt/omnidb/OmniDB
+
+ENTRYPOINT ["python3", "omnidb-server.py", "-d", "/opt/omnidb/data"]
