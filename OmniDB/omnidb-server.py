@@ -11,6 +11,7 @@ import string
 import optparse
 import configparser
 import OmniDB.custom_settings
+import OmniDB.jumpserver_settings
 OmniDB.custom_settings.DEV_MODE = False
 OmniDB.custom_settings.DESKTOP_MODE = False
 
@@ -48,6 +49,9 @@ parser.add_option("-P", "--path", dest="path",
                   default='', type=str,
                   help="path to access the application, other than /")
 
+#: JIANGJIE ANNOTATION :#
+#: options: {'host': None, 'port': None, 'wsport': 3333, 'ewsport': None, 'homedir': '', 'conf': '', 'app': False, 'path': ''}
+#: args: ['aaa']
 (options, args) = parser.parse_args()
 
 #Generate random token if in app mode
@@ -58,6 +62,9 @@ if options.app:
 else:
     app_version = False
 
+#: JIANGJIE ANNOTATION :#
+#: 设置项目的HOME_DIR
+#: TODO: JumpServer需要指定HOME_DIR，比如 /opt/omnidb/
 if options.homedir!='':
     if not os.path.exists(options.homedir):
         print("Home directory does not exist. Please specify a directory that exists.",flush=True)
@@ -66,9 +73,13 @@ if options.homedir!='':
         OmniDB.custom_settings.HOME_DIR = options.homedir
 
 
+#: JIANGJIE ANNOTATION :#
+#: 设置完custom_settings后再进行导入runtime_settings，用于创建HOME_DIR目录
 #importing runtime settings after setting HOME_DIR and other required parameters
 import OmniDB.runtime_settings
 
+#: JIANGJIE ANNOTATION :#
+#: 获取项目配置文件路径
 if options.conf!='':
     if not os.path.exists(options.conf):
         print("Config file not found, using default settings.",flush=True)
@@ -78,10 +89,17 @@ if options.conf!='':
 else:
     config_file = OmniDB.runtime_settings.CONFFILE
 
+#: JIANGJIE ANNOTATION :#
+#: 解析配置文件内容
 #Parsing config file
 Config = configparser.ConfigParser()
 Config.read(config_file)
 
+#: JIANGJIE ANNOTATION :#
+#: 设置项目启动所需的变量，读取顺序
+#: 1. 启动脚本所指参数
+#: 2. 配置文件所指参数(omnidb.conf)
+#: 3. custom_settings所指参数
 if options.host!=None:
     listening_address = options.host
 else:
@@ -149,6 +167,29 @@ try:
 except:
     pass
 
+try:
+    OmniDB.jumpserver_settings.JUMPSERVER_BOOTSTRAP_TOKEN = Config.get('jumpserver', 'bootstrap_token')
+except:
+    #: JIANGJIE ANNOTATION :#
+    #: 从环境变量获取
+    OmniDB.jumpserver_settings.JUMPSERVER_BOOTSTRAP_TOKEN = os.environ.get('JUMPSERVER_BOOTSTRAP_TOKEN')
+
+try:
+    OmniDB.jumpserver_settings.JUMPSERVER_HOST = Config.get('jumpserver', 'host')
+except:
+    #: JIANGJIE ANNOTATION :#
+    #: 从环境变量获取
+    OmniDB.jumpserver_settings.JUMPSERVER_HOST = os.environ.get('JUMPSERVER_CORE_HOST')
+
+try:
+    #: JIANGJIE ANNOTATION :#
+    #: 从环境变量获取
+    OmniDB.jumpserver_settings.JUMPSERVER_LOG_LEVEL = Config.get('jumpserver', 'log_level')
+except:
+    OmniDB.jumpserver_settings.JUMPSERVER_LOG_LEVEL = os.environ.get('LOG_LEVEL')
+
+#: JIANGJIE ANNOTATION :#
+#: 等待 HOST_DIR、custom_settings 中的参数设置完成后，再导入项目的 Django settings 文件
 #importing settings after setting HOME_DIR and other required parameters
 import OmniDB.settings
 
@@ -157,8 +198,12 @@ import logging.config
 
 logger = logging.getLogger('OmniDB_app.Init')
 
+#: JIANGJIE ANNOTATION :#
+#: 设置项目的 Django settings 文件
+#: TODO: 配置项目启动模式是否为DEBUG
 #Configuring Django settings before loading them
 OmniDB.settings.DEBUG = False
+
 if is_ssl:
     OmniDB.settings.SESSION_COOKIE_SECURE = True
     OmniDB.settings.CSRF_COOKIE_SECURE = True
@@ -175,11 +220,19 @@ if is_ssl:
         logger.info("Key file not found. Please specify a file that exists.")
         sys.exit()
 
+#: JIANGJIE ANNOTATION :#
+#: TODO: 这里是否需要设定JumpServer_app自己的配置文件，按照项目的思路管理配置项
+#: 比如 import JumpServer_app.js_settings
 import OmniDB
 import OmniDB_app
 import OmniDB_app.apps
+#: JIANGJIE ANNOTATION :#
+#: 动态设置DJANGO_SETTINGS_MODULE变量，Django本身支持的配置文件设置方式
 os.environ['DJANGO_SETTINGS_MODULE'] = 'OmniDB.settings'
 import django
+#: JIANGJIE ANNOTATION :#
+#: 单独运行Django应用时，需要手动调用django.setup()方法
+#: Calling django.setup() is required for “standalone” Django usage
 django.setup()
 import html.parser
 import http.cookies
@@ -206,6 +259,7 @@ import django.contrib.auth.password_validation
 
 from django.core.handlers.wsgi import WSGIHandler
 from OmniDB import startup, ws_core
+import JumpServer_app.startup
 
 import time
 import cherrypy
@@ -239,11 +293,22 @@ class DjangoApplication(object):
     def run(self,parameters):
         #cherrypy.engine.unsubscribe('graceful', cherrypy.log.reopen_files)
 
+        #: JIANGJIE ANNOTATION :#
+        #: 配置logging对象
         logging.config.dictConfig(OmniDB.settings.LOGGING)
+
+        #: JIANGJIE ANNOTATION :#
+        #: 禁用cherrypy的访问日志
         #cherrypy.log.error_log.propagate = False
         cherrypy.log.access_log.propagate = False
+
+        #: JIANGJIE ANNOTATION :#
+        #: 挂载cherrypy静态文件目录
         self.mount_static(OmniDB.settings.STATIC_URL, OmniDB.settings.STATIC_ROOT)
 
+        #: JIANGJIE ANNOTATION :#
+        #: 设置cherrypy的WSGI处理器
+        #: TODO: DEEP NEED
         cherrypy.tree.graft(WSGIHandler())
 
         port = parameters['listening_port']
@@ -254,6 +319,8 @@ class DjangoApplication(object):
         print('''Checking port availability...''',flush=True)
         logger.info('''Checking port availability...''')
 
+        #: JIANGJIE ANNOTATION :#
+        #: 获取 Web Server 可用端口
         while not check_port(port) or num_attempts >= 20:
             print("Port {0} is busy, trying another port...".format(port),flush=True)
             logger.info("Port {0} is busy, trying another port...".format(port))
@@ -283,14 +350,42 @@ class DjangoApplication(object):
                 v_cherrypy_config['server.ssl_private_key'] = parameters['ssl_key_file']
                 v_cherrypy_config['server.ssl_context'] = ssl_ctx
 
+            #: JIANGJIE ANNOTATION :#
+            #: 更新cherrypy配置参数
             cherrypy.config.update(v_cherrypy_config)
 
             print ("Starting server {0} at {1}:{2}{3}.".format(OmniDB.settings.OMNIDB_VERSION,parameters['listening_address'],str(port),OmniDB.settings.PATH),flush=True)
             logger.info("Starting server {0} at {1}:{2}.".format(OmniDB.settings.OMNIDB_VERSION,parameters['listening_address'],str(port)))
 
+            #: JIANGJIE ANNOTATION :#
+            #: 启动程序: 处理用户数据库、应用数据库、临时文件、session信息
             # Startup
             startup.startup_procedure()
 
+            #: JIANGJIE ANNOTATION :#
+            #: 注册终端
+            logger.info('注册终端')
+            ok = JumpServer_app.startup.register_terminal()
+            if not ok:
+                sys.exit()
+
+            ok = JumpServer_app.startup.fetch_terminal_config()
+            if not ok:
+                sys.exit()
+
+            logger.info('开启定时获取终端配置线程')
+            JumpServer_app.startup.start_timing_fetch_terminal_config_thread()
+
+            logger.info('开启保持终端心跳线程')
+            JumpServer_app.startup.start_keep_terminal_heartbeat_thread()
+
+            logger.info('开启命令上传处理线程')
+            JumpServer_app.startup.start_command_upload_thread()
+
+            logger.info('开启遗留录像上传处理线程')
+            JumpServer_app.startup.start_remain_replay_upload_thread()
+
+            #: 启动Web Server
             cherrypy.engine.start()
 
             if not app_version:
@@ -302,7 +397,10 @@ class DjangoApplication(object):
                 print ("http://localhost:{0}/login/?user=admin&pwd=admin&token={1}".format(str(port),OmniDB.custom_settings.APP_TOKEN),flush=True)
 
 
+            #: JIANGJIE ANNOTATION :#
+            #: 阻塞
             cherrypy.engine.block()
+            #: 退出
             cherrypy.engine.exit()
         else:
             print('Tried 20 different ports without success, closing...',flush=True)
@@ -319,6 +417,8 @@ if __name__ == "__main__":
     print('''Checking port availability...''',flush=True)
     logger.info('''Checking port availability...''')
 
+    #: JIANGJIE ANNOTATION :#
+    #: 获取Web Socket Server 可用的端口
     while not check_port(port) or num_attempts_port >= 20:
         print("Port {0} is busy, trying another port...".format(port),flush=True)
         logger.info("Port {0} is busy, trying another port...".format(port))
@@ -326,6 +426,8 @@ if __name__ == "__main__":
         num_attempts_port = num_attempts_port + 1
 
     if num_attempts_port < 20:
+        #: JIANGJIE ANNOTATION :#
+        #: 设置最终的Django settings配置选项 :#
         OmniDB.settings.OMNIDB_WEBSOCKET_PORT          = port
         if ews_port==None:
             OmniDB.settings.OMNIDB_EXTERNAL_WEBSOCKET_PORT = port
@@ -341,11 +443,18 @@ if __name__ == "__main__":
         print ("Starting websocket server at port {0}.".format(str(port)),flush=True)
         logger.info("Starting websocket server at port {0}.".format(str(port)))
 
+        #: 清除过期Sessions
         #Removing Expired Sessions
-        SessionStore.clear_expired()
+        # SessionStore.clear_expired()
+        #: 清除所有Sessions
+        SessionStore.get_model_class().objects.all().delete()
 
+        #: 开启WebSocket Server: tornado + asyncio
         #Websocket Core
         ws_core.start_wsserver_thread()
+
+
+        #: 启动Web Server: cherrypy + Django.WSGIHandler
         DjangoApplication().run(
             {
                 'listening_address'   : listening_address,
