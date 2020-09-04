@@ -9,7 +9,7 @@ WORKDIR /opt/omnidb
 
 COPY . .
 RUN useradd omnidb
-RUN pip install --upgrade pip setuptools wheel -i ${PIP_MIRROR} && pip install -i ${PIP_MIRROR} -r requirements.txt
+RUN pip install -i ${PIP_MIRROR} --upgrade pip setuptools wheel && pip install -i ${PIP_MIRROR} -r requirements.txt
 
 VOLUME /opt/omnidb/data
 
@@ -22,3 +22,4 @@ EXPOSE 25482
 WORKDIR /opt/omnidb/OmniDB
 
 #ENTRYPOINT ["python3", "omnidb-server.py", "-d", "/opt/omnidb/data"]
+CMD ["python3", "omnidb-server.py", "-d", "/opt/omnidb/data"]
