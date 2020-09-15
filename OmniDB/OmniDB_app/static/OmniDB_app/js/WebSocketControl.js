@@ -45,6 +45,7 @@ function createWebSocket(p_address, p_port, p_onOpen, p_onMessage, p_onClose, p_
 	}
 
 	var v_connection = new WebSocket(p_address + ':' + v_port + v_url_folder + '/' + p_channel);
+	console.log('p_address:v_port::::', p_address, v_port)
 
 	if(p_onOpen != null && typeof p_onOpen == 'function') {
 		v_connection.onopen = p_onOpen;
