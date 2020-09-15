@@ -38,11 +38,12 @@ function createWebSocket(p_address, p_port, p_onOpen, p_onMessage, p_onClose, p_
 		return;
 	}
 
-	var v_port = 80;
+	// var v_port = 80;
+    var v_port = parseInt(p_port)
 
-	if(p_port != null && typeof p_port == 'number') {
-		v_port = p_port;
-	}
+	// if(p_port != null && typeof p_port == 'number') {
+	// 	v_port = p_port;
+	// }
 
 	var v_connection = new WebSocket(p_address + ':' + v_port + v_url_folder + '/' + p_channel);
 	console.log('p_address:v_port::::', p_address, v_port)
