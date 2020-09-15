@@ -141,7 +141,6 @@ function startQueryWebSocket(p_port) {
 
 	// var v_port = v_query_port_external;
     var v_port = window.location.port
-	console.log(':::query:::v_port:::', v_port)
 	// if (p_port){
 	// 	v_port = p_port;
 	// }

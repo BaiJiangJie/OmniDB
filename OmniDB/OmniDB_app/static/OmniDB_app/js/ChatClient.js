@@ -341,8 +341,6 @@ function startChatWebSocket(p_port) {
 
     var v_port = window.location.port
 
-    console.log(':::chat:::v_port::: ', v_port)
-
 
     if(v_is_secure) {
 		v_address = 'wss://' + window.location.hostname;

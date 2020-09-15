@@ -168,18 +168,18 @@ except:
     pass
 
 try:
-    OmniDB.jumpserver_settings.JUMPSERVER_BOOTSTRAP_TOKEN = Config.get('jumpserver', 'bootstrap_token')
+    OmniDB.jumpserver_settings.BOOTSTRAP_TOKEN = Config.get('jumpserver', 'bootstrap_token')
 except:
     #: JIANGJIE ANNOTATION :#
     #: 从环境变量获取
-    OmniDB.jumpserver_settings.JUMPSERVER_BOOTSTRAP_TOKEN = os.environ.get('JUMPSERVER_BOOTSTRAP_TOKEN')
+    OmniDB.jumpserver_settings.BOOTSTRAP_TOKEN = os.environ.get('BOOTSTRAP_TOKEN')
 
 try:
-    OmniDB.jumpserver_settings.JUMPSERVER_HOST = Config.get('jumpserver', 'host')
+    OmniDB.jumpserver_settings.CORE_HOST = Config.get('jumpserver', 'host')
 except:
     #: JIANGJIE ANNOTATION :#
     #: 从环境变量获取
-    OmniDB.jumpserver_settings.JUMPSERVER_HOST = os.environ.get('JUMPSERVER_CORE_HOST')
+    OmniDB.jumpserver_settings.CORE_HOST = os.environ.get('CORE_HOST')
 
 try:
     #: JIANGJIE ANNOTATION :#

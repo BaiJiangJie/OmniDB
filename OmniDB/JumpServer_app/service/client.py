@@ -35,7 +35,7 @@ class JumpServerRequester(object):
         self._headers = headers
 
     def init_host(self):
-        host = jumpserver_settings.JUMPSERVER_HOST
+        host = jumpserver_settings.CORE_HOST
         self.set_host(host)
 
     def init_auth(self):
@@ -145,7 +145,7 @@ class JumpServerRequester(object):
             'name': '[OmniDB] {}'.format(socket.gethostname())
         }
         headers = {
-            'Authorization': 'BootstrapToken {}'.format(jumpserver_settings.JUMPSERVER_BOOTSTRAP_TOKEN),
+            'Authorization': 'BootstrapToken {}'.format(jumpserver_settings.BOOTSTRAP_TOKEN),
             'X-JMS-ORG': 'ROOT'
         }
         return self._raw_requests(method='post', url=registry_terminal_url, data=data, headers=headers)
