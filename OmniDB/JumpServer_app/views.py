@@ -170,7 +170,7 @@ def workspace(request):
             v_omnidb_database.v_connection.Execute('''
                 insert into users values (
                 (select coalesce(max(user_id), 0) + 1 from users),
-                '{0}','{1}',1,'14',1,0,'utf-8',';','11',1
+                '{0}','{1}',17,'14',1,0,'utf-8',';','11',1
                 )
             '''.format(omnidb_user_username, v_cryptor.Hash(v_cryptor.Encrypt(omnidb_user_password))))
         logger.info(f'获取OmniDB用户({omnidb_user_username})')
