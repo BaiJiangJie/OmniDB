@@ -124,6 +124,8 @@ def index(request):
         'url_folder': settings.PATH,
         #: JIANGJIE ANNOTATION :#
         #: 返回默认打开的conn_id
+        'csv_delimiter': v_session.v_csv_delimiter,
+        'chat_link': '',
         'default_open_conn_id': v_session.js_v_default_open_conn_id
     }
 

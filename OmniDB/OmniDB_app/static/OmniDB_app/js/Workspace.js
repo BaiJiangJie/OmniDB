@@ -131,6 +131,8 @@ $(function () {
 	window.addEventListener("focus", function(event)
 	{
 		if (v_connTabControl.selectedTab.tag.mode=='connection') {
+			if (v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag==null)
+			    return
 			if (v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.mode=='query')
 				v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.editor.focus();
 			else if (v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.mode=='console')

@@ -108,8 +108,8 @@ function websocketPing() {
 
 			}
 			websocketClosed();
-		},20000);
-	},120000);
+		},10000);
+	},30000);
 
 }
 
@@ -287,7 +287,6 @@ function startQueryWebSocket(p_port) {
 			}
 		},
 		function(p_event) {//Close
-
 			websocketClosed(p_port);
 		},
 		function(p_event) {//Error
