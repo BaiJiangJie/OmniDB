@@ -39,7 +39,11 @@ function createWebSocket(p_address, p_port, p_onOpen, p_onMessage, p_onClose, p_
 	}
 
 	// var v_port = 80;
-    var v_port = parseInt(p_port) || 80
+	var default_port = 80
+	if (window.location.protocol == "https:")
+		default_port = 443
+
+    var v_port = parseInt(p_port) || default_port
 
 	// if(p_port != null && typeof p_port == 'number') {
 	// 	v_port = p_port;
