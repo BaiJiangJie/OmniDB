@@ -709,6 +709,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
           'system_user': js_v_connection['js_system_user']['username'],
           'input': pretty_cmd_input,
           'output': pretty_cmd_output,
+          'risk_level': 0,
           'session': js_v_connection['js_session']['id'],
           'timestamp': int(time.time()),
           'org_id': js_v_connection['js_database']['org_id']

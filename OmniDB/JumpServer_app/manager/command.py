@@ -2,6 +2,7 @@ import queue
 import time
 import logging
 import threading
+import jms_storage
 from .. import service
 from ..manager.terminal import terminal_manager
 
@@ -19,6 +20,11 @@ class Command(object):
     @staticmethod
     def get_storage_type():
         return terminal_manager.get_config_command_storage_type()
+
+    @staticmethod
+    def get_storage_config():
+        config = terminal_manager.get_config_command_storage()
+        return config
 
     def upload_to_server(self):
         try:
@@ -41,7 +47,15 @@ class Command(object):
 
     def upload_to_external(self):
         """ TODO: 上传命令到外部存储 """
-        pass
+        try:
+            config = self.get_storage_config()
+            storage = jms_storage.get_log_storage(config)
+            storage.save(self.data)
+        except Exception as e:
+            logger.error(f'命令上传失败: ({str(e)}')
+            return False
+        else:
+            return True
 
     def _upload(self):
         storage_type = self.get_storage_type()

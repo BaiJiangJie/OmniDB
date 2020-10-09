@@ -68,10 +68,13 @@ class TerminalManager(object):
         heartbeat_interval = config['TERMINAL_HEARTBEAT_INTERVAL']
         return heartbeat_interval
 
-    def get_config_command_storage_type(self):
+    def get_config_command_storage(self):
         config = self.get_config()
-        storage_type = config['TERMINAL_COMMAND_STORAGE']['TYPE']
-        return storage_type
+        return config['TERMINAL_COMMAND_STORAGE']
+
+    def get_config_command_storage_type(self):
+        config_command_storage = self.get_config_command_storage()
+        return config_command_storage['TYPE']
 
     def get_config_replay_storage_type(self):
         config = self.get_config()
@@ -117,13 +120,14 @@ class TerminalManager(object):
                 resp_heartbeat = service.client.jumpserver_client.keep_terminal_heartbeat()
                 if resp_heartbeat.status_code == 201:
                     session_tasks = resp_heartbeat.json()
-                    logger.debug(f'保持终端心跳响应({session_tasks})')
+                    logger.debug(f'保持终端心跳响应: ({session_tasks})')
                     self.handle_terminal_tasks(session_tasks)
                 else:
                     logger.error(f'保持终端心跳失败, 响应状态码: ({resp_heartbeat.status_code}), text: ({resp_heartbeat.text})')
             except Exception as exc:
                 logger.error(f'保持终端心跳出现异常: ({str(exc)})')
             heartbeat_interval = self.get_config_heartbeat_interval()
+            logger.debug(f'终端心跳间隔: ({heartbeat_interval})')
             time.sleep(heartbeat_interval)
 
     def handle_terminal_tasks(self, session_tasks):
