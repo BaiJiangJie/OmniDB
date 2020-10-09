@@ -113,6 +113,12 @@ class debugState(IntEnum):
   Finished = 4
   Cancel   = 5
 
+
+class commmandRiskLevel(IntEnum):
+    RISK_LEVEL_ORDINARY = 0
+    RISK_LEVEL_DANGEROUS = 5
+
+
 connection_list = dict([])
 
 def closeTabHandler(ws_object,p_tab_object_id):
@@ -697,7 +703,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
       # 开启录像
       replay_manager.start_replay(session_id)
 
-  def construct_command(self, cmd_input, cmd_output):
+  def construct_command(self, cmd_input, cmd_output, risk_level):
       js_v_connection = self.js_v_connection
 
       #: Pretty cmd input output
@@ -709,21 +715,21 @@ class WSHandler(tornado.websocket.WebSocketHandler):
           'system_user': js_v_connection['js_system_user']['username'],
           'input': pretty_cmd_input,
           'output': pretty_cmd_output,
-          'risk_level': 0,
+          'risk_level': risk_level,
           'session': js_v_connection['js_session']['id'],
           'timestamp': int(time.time()),
           'org_id': js_v_connection['js_database']['org_id']
       }
       return command
 
-  def record_command(self, cmd_input, cmd_output):
+  def record_command(self, cmd_input, cmd_output, risk_level=commmandRiskLevel.RISK_LEVEL_ORDINARY):
       """
       说明: 记录命令
       功能:
           - 记录命令
           - 记录录像
       """
-      command = self.construct_command(cmd_input, cmd_output)
+      command = self.construct_command(cmd_input, cmd_output, risk_level)
       logger.info('记录命令')
       command_manager.record_command(command)
       logger.info('记录录像')
