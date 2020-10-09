@@ -37,3 +37,4 @@ tempora==4.0.0
 tornado==6.0.2
 urllib3==1.25.10
 zc.lockfile==2.0
+jms-storage==0.0.32
