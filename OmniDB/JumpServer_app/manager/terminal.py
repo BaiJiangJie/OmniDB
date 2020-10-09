@@ -76,10 +76,13 @@ class TerminalManager(object):
         config_command_storage = self.get_config_command_storage()
         return config_command_storage['TYPE']
 
-    def get_config_replay_storage_type(self):
+    def get_config_replay_storage(self):
         config = self.get_config()
-        storage_type = config['TERMINAL_REPLAY_STORAGE']['TYPE']
-        return storage_type
+        return config['TERMINAL_REPLAY_STORAGE']
+
+    def get_config_replay_storage_type(self):
+        config_replay_storage = self.get_config_replay_storage()
+        return config_replay_storage['TYPE']
 
     def start_timing_fetch_config_thread(self):
         t = threading.Thread(target=self.start_timing_fetch_config)

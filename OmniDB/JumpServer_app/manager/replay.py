@@ -4,6 +4,7 @@ import json
 import logging
 import datetime
 import threading
+import jms_storage
 from django.conf import settings
 from .. import utils, service
 from .terminal import terminal_manager
@@ -80,6 +81,10 @@ class Replay(object):
     def get_storage_type():
         return terminal_manager.get_config_replay_storage_type()
 
+    @staticmethod
+    def get_storage_config():
+        return terminal_manager.get_config_replay_storage()
+
     def upload_to_server(self):
         return service.client.jumpserver_client.upload_replay(self.gz_filepath, self.upload_target)
 
@@ -90,7 +95,13 @@ class Replay(object):
 
     def upload_to_external(self):
         """ TODO: 上传录像到外部存储 """
-        pass
+        config = self.get_storage_config()
+        logger.debug(f'录像存储配置: ({config})')
+        storage = jms_storage.get_object_storage(config)
+        ok, error = storage.upload(src=self.gz_filepath, target=self.upload_target)
+        if not ok:
+            logger.error(f'上传录像失败: ({error})')
+        return ok
 
     def _upload(self):
         storage_type = self.get_storage_type()
