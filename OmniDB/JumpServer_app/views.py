@@ -2,6 +2,7 @@ from django.shortcuts import redirect
 from django.http import HttpResponse
 import logging
 import requests
+from urllib.parse import quote
 import datetime
 from OmniDB import jumpserver_settings, settings
 from OmniDB_app.views.login import sign_in_automatic
@@ -20,6 +21,8 @@ def workspace(request):
     URL调用: /omnidb/connect/workspace/?system_user_id={SystemUserID}&database_id={DatabaseID}
     """
     logger.info('收到连接请求')
+    _next = request.get_full_path()
+    login_url = '/core/auth/login/?next={}'.format(quote(_next))
     session_id = request.COOKIES.get('sessionid')
     csrf_token = request.COOKIES.get('csrftoken')
     database_id = request.GET.get('database_id')
@@ -28,7 +31,7 @@ def workspace(request):
         if not session_id or not csrf_token:
             error = '用户未登录(请求中缺少sessionid或csrftoken字段)'
             logger.error(error)
-            return HttpResponse(error)
+            return redirect(login_url)
         if not database_id or not system_user_id:
             error = 'URL查询参数中缺少database_id或system_user_id字段'
             logger.error(error)
@@ -49,7 +52,7 @@ def workspace(request):
                     f'text: {resp_profile.text}, ' \
                     f'连接失败'
             logger.error(error)
-            return HttpResponse(error)
+            return redirect(login_url)
     except Exception as exc:
         error = f'获取用户信息异常: {str(exc)}, 连接失败'
         logger.error(error)
