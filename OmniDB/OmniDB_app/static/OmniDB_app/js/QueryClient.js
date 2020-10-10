@@ -108,8 +108,8 @@ function websocketPing() {
 
 			}
 			websocketClosed();
-		},20000);
-	},120000);
+		},10000);
+	},30000);
 
 }
 
@@ -139,9 +139,11 @@ function startQueryWebSocket(p_port) {
 	if (window.location.protocol == "https:")
 		v_secure  = true;
 
-	var v_port = v_query_port_external;
-	if (p_port)
-		v_port = p_port;
+	// var v_port = v_query_port_external;
+    var v_port = window.location.port
+	// if (p_port){
+	// 	v_port = p_port;
+	// }
 
 	if (v_secure) {
 		v_address = 'wss://' + window.location.hostname;
@@ -285,7 +287,6 @@ function startQueryWebSocket(p_port) {
 			}
 		},
 		function(p_event) {//Close
-
 			websocketClosed(p_port);
 		},
 		function(p_event) {//Error

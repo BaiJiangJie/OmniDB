@@ -41,6 +41,11 @@ import pexpect
 sys.path.append('OmniDB_app/include')
 from OmniDB_app.include import paramiko
 from OmniDB_app.include import custom_paramiko_expect
+from JumpServer_app.manager.command import command_manager
+from JumpServer_app.manager.replay import replay_manager
+from JumpServer_app.manager.session import session_manager
+from JumpServer_app.manager.omnidb import omnidb_manager
+
 
 class StoppableThread(threading.Thread):
     def __init__(self,p1,p2,p3):
@@ -98,6 +103,8 @@ class response(IntEnum):
   TerminalResult      = 12
   Pong                = 13
 
+  BeTerminated         = 20
+
 class debugState(IntEnum):
   Initial  = 0
   Starting = 1
@@ -105,6 +112,12 @@ class debugState(IntEnum):
   Step     = 3
   Finished = 4
   Cancel   = 5
+
+
+class commmandRiskLevel(IntEnum):
+    RISK_LEVEL_ORDINARY = 0
+    RISK_LEVEL_DANGEROUS = 5
+
 
 connection_list = dict([])
 
@@ -177,11 +190,14 @@ def thread_dispatcher(self,args,ws_object):
             try:
                 v_session = SessionStore(session_key=v_data)['omnidb_session']
                 ws_object.v_session = v_session
+                v_conn_id = json_object.get('v_conn_id')
+                ws_object.on_login(v_conn_id)
                 v_response['v_code'] = response.LoginResult
                 ws_object.v_list_tab_objects = dict([])
                 ws_object.terminal_command_list = []
                 ws_object.event_loop.add_callback(send_response_thread_safe,ws_object,json.dumps(v_response))
-            except Exception:
+            except Exception as exc:
+                logger.error(f'WSLogin出现异常: {str(exc)}', exc_info=True)
                 v_response['v_code'] = response.SessionMissing
                 ws_object.event_loop.add_callback(send_response_thread_safe,ws_object,json.dumps(v_response))
         elif v_code == request.Ping:
@@ -555,6 +571,10 @@ def thread_dispatcher_terminal_command(self,args,ws_object):
                 break
 
 def thread_client_control(self,args,object):
+    """
+    #: JIANGJIE ANNOTATION :#
+    #: 定时清除/关闭超时未响应的 Websocket Client
+    """
     message = args
 
     while True:
@@ -629,6 +649,8 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         except Exception as exc:
             None
 
+        self.on_logout()
+
         #removing client object from list of clients
         try:
             del connection_list[self.client_id]
@@ -640,9 +662,143 @@ class WSHandler(tornado.websocket.WebSocketHandler):
     except Exception:
         None
 
-
   def check_origin(self, origin):
     return True
+
+  @property
+  def js_v_connection(self):
+      """ 当前conn_id和JumpServer关联的所有信息(database、system_user、session等等); 在view中添加 """
+      return self.v_session.js_v_connections[self.v_conn_id]
+
+  @property
+  def js_session(self):
+      return self.js_v_connection['js_session']
+
+  @property
+  def js_session_id(self):
+      """ 当前conn_id对应的jumpserver_session_id"""
+      return self.js_session['id']
+
+  @property
+  def db_type(self):
+      """ 当前conn_id对应所连接的数据库类型"""
+      return self.v_session.v_databases[self.v_conn_id]['database'].v_db_type
+
+  def on_login(self, v_conn_id):
+      """ WS Client 登录时做一些处理操作 """
+      self.v_conn_id = v_conn_id
+      session_id = self.js_session_id
+      v_user_id = self.v_session.v_user_id
+      v_user_key = self.v_user_key
+      logger.info(
+          f'监听到用户WebSocket连接登录, session_id({session_id}), conn_id({v_conn_id}),'
+          f' v_user_id({v_user_id}), v_user_key({v_user_key})'
+      )
+      logger.info(f'添加活跃Session({self.js_session_id})')
+      session_manager.add_active_session(self.js_session)
+      logger.info(f'添加Session和WebSocket对象关系')
+      session_manager.add_ws_object(session_id, self)
+      logger.info(f'添加OmniDB用户({v_user_id})conn_id({v_conn_id})')
+      omnidb_manager.user_manager.add_user_active_conn_id(user_id=v_user_id, conn_id=v_conn_id)
+      # 开启录像
+      replay_manager.start_replay(session_id)
+
+  def construct_command(self, cmd_input, cmd_output, risk_level):
+      js_v_connection = self.js_v_connection
+
+      #: Pretty cmd input output
+      pretty_cmd_input = command_manager.pretty_cmd_input(cmd_input, self.db_type)
+      pretty_cmd_output = command_manager.pretty_cmd_output(cmd_output)
+      command = {
+          'user': f"{js_v_connection['js_user']['name']} ({js_v_connection['js_user']['username']})",
+          'asset': js_v_connection['js_database']['name'],
+          'system_user': js_v_connection['js_system_user']['username'],
+          'input': pretty_cmd_input,
+          'output': pretty_cmd_output,
+          'risk_level': risk_level,
+          'session': js_v_connection['js_session']['id'],
+          'timestamp': int(time.time()),
+          'org_id': js_v_connection['js_database']['org_id']
+      }
+      return command
+
+  def record_command(self, cmd_input, cmd_output, risk_level=commmandRiskLevel.RISK_LEVEL_ORDINARY):
+      """
+      说明: 记录命令
+      功能:
+          - 记录命令
+          - 记录录像
+      """
+      command = self.construct_command(cmd_input, cmd_output, risk_level)
+      logger.info('记录命令')
+      command_manager.record_command(command)
+      logger.info('记录录像')
+      replay_manager.record_replay(command)
+
+  def on_logout(self):
+      """ Ws Client 关闭时做一些收尾操作 """
+      session_id = self.js_session_id
+      v_conn_id = self.v_conn_id
+      v_user_id = self.v_session.v_user_id
+      v_user_key = self.v_user_key
+      logger.info(
+          f'监听到用户WebSocket连接退出, session_id({session_id}), conn_id({v_conn_id}),'
+          f' v_user_id({v_user_id}), v_user_key({v_user_key})'
+      )
+      try:
+          logger.info(f'完成Session({session_id})')
+          session_manager.remove_ws_object(session_id)
+          session_manager.finish_session(session_id)
+          session_manager.remove_active_session(session_id)
+      except Exception as exc:
+          logger.error(f'完成Session出现异常({str(exc)})')
+
+      try:
+          logger.info(f'结束Replay({session_id})')
+          replay_manager.end_replay(session_id)
+          replay_manager.remove_replay(session_id)
+      except Exception as exc:
+          logger.error(f'结束Replay出现异常({str(exc)})')
+
+      try:
+          logger.info(f'完成Session录像上传({session_id})')
+          session_manager.finish_session_replay_upload(session_id)
+      except Exception as exc:
+          logger.error(f'完成Session录像上传出现异常({str(exc)})')
+
+      try:
+          logger.info(f'结束OmniDB-Connection')
+          omnidb_manager.end_connection(user_id=v_user_id, conn_id=v_conn_id)
+      except Exception as exc:
+          logger.error(f'结束OmniDB-Connection时出现异常({str(exc)})', exc_info=True)
+
+      try:
+          logger.info(f'结束或保留OmniDB-User-Session')
+          if omnidb_manager.user_has_active_conn_ids(v_user_id):
+              logger.info('保留OmniDB-User-Session')
+          else:
+              logger.info('结束OmniDB-User-Session')
+              omnidb_manager.end_session(v_user_id)
+              logger.info('删除OmniDB-User-SessionStore')
+              SessionStore(session_key=v_user_key).delete()
+      except Exception as exc:
+          logger.info(f'结束或保留OmniDB-User-Session时出现异常({str(exc)})', exc_info=True)
+
+  def on_terminate(self):
+      # TODO: 什么地方可以真正终断wb_socket, 返回给前端消息
+      session_id = self.js_session_id
+      v_conn_id = self.v_conn_id
+      v_response = {
+          'v_code': 0,
+          'v_context_code': 0,
+          'v_error': False,
+          'v_data': 1
+      }
+      logger.info(f'监听到WebSocket对象连接被终断(session_id:{session_id};conn_id:{v_conn_id})')
+      v_response['v_code'] = response.MessageException
+      v_response['v_data'] = '会话被终断'
+      self.event_loop.add_callback(send_response_thread_safe, self, json.dumps(v_response))
+
 
 def start_wsserver_thread():
     t = threading.Thread(target=start_wsserver)
@@ -656,6 +812,8 @@ def start_wsserver():
     logger.info('''*** Starting OmniDB ***''')
 
     try:
+        #: JIANGJIE ANNOTATION :#
+        #: 创建 tornado web 应用对象
         application = tornado.web.Application([
           (r'' + settings.PATH + '/ws', WSHandler),
           (r'' + settings.PATH + '/wss',WSHandler),
@@ -671,13 +829,25 @@ def start_wsserver():
                                    settings.SSL_KEY)
             server = tornado.httpserver.HTTPServer(application, ssl_options=ssl_ctx)
         else:
+            #: JIANGJIE ANNOTATION :#
+            #: 创建 tornado http server 服务对象
             server = tornado.httpserver.HTTPServer(application)
 
+        #: JIANGJIE ANNOTATION :#
+        #: 开启线程: 定时清除本地保存的未响应的websocket client对象
         #Start thread that controls clients
         thread_clients = StoppableThread(thread_client_control,None,None)
         thread_clients.start()
 
+        #: JIANGJIE ANNOTATION :#
+        #: 设置 event loop policy 为 tornado AnyThreadEventLoopPolicy , 以便能够在任何线程中创建 event loop
+        #: TODO: DEEP NEED
         asyncio.set_event_loop_policy(AnyThreadEventLoopPolicy())
+
+        #: JIANGJIE ANNOTATION :#
+        #: 设置Websocket Server监听的地址和端口
+        #: 启动Websocket Server服务
+        #: TODO: DEEP NEED
         server.listen(settings.OMNIDB_WEBSOCKET_PORT,address=settings.OMNIDB_ADDRESS)
         tornado.ioloop.IOLoop.instance().start()
 
@@ -871,6 +1041,9 @@ def thread_query(self,args,ws_object):
         v_tab_title      = args['v_tab_title']
         v_autocommit     = args['v_autocommit']
 
+        #: 获取输入命令
+        js_cmd_input = v_sql
+
         #Removing last character if it is a semi-colon
         if v_sql[-1:]==';':
             v_sql = v_sql[:-1]
@@ -986,6 +1159,12 @@ def thread_query(self,args,ws_object):
 
                     v_data1 = v_database.v_connection.QueryBlock(v_sql, 50, True, True)
 
+                    #: 获取命令输出
+                    js_cmd_output = v_data1.Pretty(v_database.v_connection.v_expanded)
+                    #: 记录命令输入输出
+                    ws_object.record_command(js_cmd_input, js_cmd_output)
+
+
                     v_notices = v_database.v_connection.GetNotices()
                     v_notices_text = ''
                     v_notices_length = len(v_notices)
@@ -1028,6 +1207,11 @@ def thread_query(self,args,ws_object):
                         k = k + 1
 
                         v_data1 = v_database.v_connection.QueryBlock(v_sql, 10000, True, True)
+
+                        #: 获取命令输出
+                        js_cmd_output = v_data1.Pretty(v_database.v_connection.v_expanded)
+                        #: 记录命令输入输出
+                        ws_object.record_command(js_cmd_input, js_cmd_output)
 
                         v_notices = v_database.v_connection.GetNotices()
                         v_notices_text = ''
@@ -1145,6 +1329,11 @@ def thread_query(self,args,ws_object):
                 }
                 v_response['v_error'] = True
 
+                #: 记录命令output
+                js_cmd_output = '{}'.format(str(exc))
+                #: 上传命令
+                ws_object.record_command(js_cmd_input, js_cmd_output)
+
                 ws_object.event_loop.add_callback(send_response_thread_safe,ws_object,json.dumps(v_response))
 
         #Log to history
@@ -1247,6 +1436,10 @@ def thread_console(self,args,ws_object):
                 counter = 0
                 v_show_fetch_button = False
                 for sql in list_sql:
+
+                    #: 获取输入命令
+                    js_cmd_input = sql
+
                     counter = counter + 1
                     try:
                         formated_sql = sql.strip()
@@ -1265,6 +1458,8 @@ def thread_console(self,args,ws_object):
 
                         v_data_return += v_data1
 
+                        js_cmd_output = v_data1
+
                         if v_database.v_use_server_cursor:
                             if v_database.v_connection.v_last_fetched_size == 50:
                                 v_tab_object['remaining_commands'] = list_sql[counter:]
@@ -1281,6 +1476,9 @@ def thread_console(self,args,ws_object):
                         except Exception as exc:
                             None
                         v_data_return += str(exc)
+                        js_cmd_output = str(exc)
+
+                    ws_object.record_command(js_cmd_input, js_cmd_output)
                     v_tab_object['remaining_commands'] = []
 
             log_end_time = datetime.now()
@@ -1485,6 +1683,8 @@ def thread_query_edit_data(self,args,ws_object):
         v_session = ws_object.v_session
         v_database = args['v_database']
 
+        js_cmd_input = ''
+
         try:
             if v_database.v_has_schema:
                 v_table_name = v_schema + '.' + v_table
@@ -1499,7 +1699,12 @@ def thread_query_edit_data(self,args,ws_object):
                 v_first = False
                 v_column_list = v_column_list + v_column['v_readformat'].replace('#', v_column['v_column'])
 
+            js_cmd_input = v_database.QueryTableRecordsSQL(v_column_list, v_table_name, v_filter, v_count)
+
             v_data1 = v_database.QueryTableRecords(v_column_list, v_table_name, v_filter, v_count)
+
+            js_cmd_output = v_data1.Pretty(v_database.v_connection.v_expanded)
+            ws_object.record_command(js_cmd_input, js_cmd_output)
 
             v_response['v_data']['v_query_info'] = 'Number of records: ' + str(len(v_data1.Rows))
 
@@ -1522,6 +1727,9 @@ def thread_query_edit_data(self,args,ws_object):
         except Exception as exc:
             v_response['v_data'] = str(exc)
             v_response['v_error'] = True
+
+            js_cmd_output = str(exc)
+            ws_object.record_command(js_cmd_input, js_cmd_output)
 
         if not self.cancel:
             ws_object.event_loop.add_callback(send_response_thread_safe,ws_object,json.dumps(v_response))
@@ -1603,6 +1811,10 @@ def thread_save_edit_data(self,args,ws_object):
 
                 v_response['v_data'].append(v_row_info_return)
 
+                js_cmd_input = v_command
+                js_cmd_output = v_row_info_return['v_message']
+                ws_object.record_command(js_cmd_input, js_cmd_output)
+
             # Inserting new row
             elif v_row_info['mode'] == 2:
 
@@ -1651,6 +1863,10 @@ def thread_save_edit_data(self,args,ws_object):
                     v_row_info_return['v_message'] = str(exc)
 
                 v_response['v_data'].append(v_row_info_return)
+
+                js_cmd_input = v_command
+                js_cmd_output = v_row_info_return['v_message']
+                ws_object.record_command(js_cmd_input, js_cmd_output)
 
             # Updating existing row
             elif v_row_info['mode'] == 1:
@@ -1710,6 +1926,10 @@ def thread_save_edit_data(self,args,ws_object):
                     v_row_info_return['v_message'] = str(exc)
 
                 v_response['v_data'].append(v_row_info_return)
+
+                js_cmd_input = v_command
+                js_cmd_output = v_row_info_return['v_message']
+                ws_object.record_command(js_cmd_input, js_cmd_output)
 
             i = i + 1
 

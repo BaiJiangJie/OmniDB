@@ -18,6 +18,7 @@ import string
 import getpass
 from . import custom_settings
 from . import runtime_settings
+from . import jumpserver_settings
 
 # Development Mode
 DEV_MODE = custom_settings.DEV_MODE
@@ -61,6 +62,7 @@ ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'OmniDB_app.apps.OmnidbAppConfig',
+    'JumpServer_app.apps.JumpServerAppConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -134,7 +136,8 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/1.10/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+# TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Shanghai'
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
@@ -160,6 +163,10 @@ SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
 
 #OMNIDB LOGGING
 
+#: JIANGJIE ANNOTATION :#
+#: TODO: 添加jumpserver_app应用的日志配置项
+#: TODO: DEEP NEED
+LOG_LEVEL = jumpserver_settings.JUMPSERVER_LOG_LEVEL or 'DEBUG'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -199,16 +206,24 @@ LOGGING = {
         'django': {
             'handlers':['logfile_django','console_django'],
             'propagate': False,
+            'level': LOG_LEVEL
         },
         'OmniDB_app': {
             'handlers': ['logfile_omnidb','console_omnidb_app'],
             'propagate': False,
-            'level':'INFO',
+            'level': LOG_LEVEL
+        },
+        #: JIANGJIE ANNOTATION :#
+        #: 添加JumpServer_app日志配置项
+        'JumpServer_app': {
+            'handlers': ['logfile_omnidb','console_omnidb_app'],
+            'propagate': False,
+            'level': LOG_LEVEL
         },
         'cherrypy.error': {
             'handlers': ['logfile_django','console_omnidb_app'],
-            'level': 'INFO',
-            'propagate': False
+            'propagate': False,
+            'level': LOG_LEVEL
         }
     }
 }
@@ -228,3 +243,8 @@ CH_CMDS_PER_PAGE               = 20
 PWD_TIMEOUT_TOTAL              = custom_settings.PWD_TIMEOUT_TOTAL
 PWD_TIMEOUT_REFRESH            = 300
 THREAD_POOL_MAX_WORKERS        = custom_settings.THREAD_POOL_MAX_WORKERS
+
+# JumpServer PARAMETERS
+DATA_DIR = os.path.dirname(HOME_DIR)
+JUMPSERVER_KEY_FILE            = os.path.join(DATA_DIR, 'key', 'omnidb.key')
+REPLAY_DIR                     = os.path.join(DATA_DIR, 'media', 'replay')

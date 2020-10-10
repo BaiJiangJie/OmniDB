@@ -131,6 +131,8 @@ $(function () {
 	window.addEventListener("focus", function(event)
 	{
 		if (v_connTabControl.selectedTab.tag.mode=='connection') {
+			if (v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag==null)
+			    return
 			if (v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.mode=='query')
 				v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.editor.focus();
 			else if (v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.mode=='console')
@@ -184,22 +186,27 @@ function getDatabaseList(p_init, p_callback) {
 						if (p_return.v_data.v_existing_tabs.length>0)
 							v_has_old_tabs = true;
 
-						for (var i=0; i < p_return.v_data.v_existing_tabs.length; i++) {
-							if (v_current_parent == null || v_current_parent != p_return.v_data.v_existing_tabs[i].index) {
-								v_connTabControl.tag.createConnTab(p_return.v_data.v_existing_tabs[i].index,false);
-								v_connTabControl.tag.createConsoleTab();
-							}
-
-							v_current_parent = p_return.v_data.v_existing_tabs[i].index;
-							v_connTabControl.tag.createQueryTab(p_return.v_data.v_existing_tabs[i].title,p_return.v_data.v_existing_tabs[i].tab_db_id);
-					    v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.editor.setValue(
-					        p_return.v_data.v_existing_tabs[i].snippet);
-							v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.editor.clearSelection();
-					    v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.editor.gotoLine(0, 0, true);
-						}
+						//: JIANGJIE ANNOTATION ://
+						//: 默认不打开存在的tabs(用户上次退出时保留的)
+						// for (var i=0; i < p_return.v_data.v_existing_tabs.length; i++) {
+						// 	if (v_current_parent == null || v_current_parent != p_return.v_data.v_existing_tabs[i].index) {
+						// 		v_connTabControl.tag.createConnTab(p_return.v_data.v_existing_tabs[i].index,false);
+						// 		v_connTabControl.tag.createConsoleTab();
+						// 	}
+						//
+						// 	v_current_parent = p_return.v_data.v_existing_tabs[i].index;
+						// 	v_connTabControl.tag.createQueryTab(p_return.v_data.v_existing_tabs[i].title,p_return.v_data.v_existing_tabs[i].tab_db_id);
+					    // v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.editor.setValue(
+					    //     p_return.v_data.v_existing_tabs[i].snippet);
+						// 	v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.editor.clearSelection();
+					    // v_connTabControl.selectedTab.tag.tabControl.selectedTab.tag.editor.gotoLine(0, 0, true);
+						// }
 
 						if (!v_has_old_tabs)
-							v_connTabControl.tag.createConnTab(v_connTabControl.tag.connections[0].v_conn_id);
+						    //: JIANGJIE ANNOTATION ://
+						    //: 默认打开指定conn_id
+							// v_connTabControl.tag.createConnTab(v_connTabControl.tag.connections[0].v_conn_id);
+							v_connTabControl.tag.createConnTab(v_default_open_conn_id);
 
 					}
 					else {

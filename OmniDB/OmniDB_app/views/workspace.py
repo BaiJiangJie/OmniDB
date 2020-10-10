@@ -8,6 +8,7 @@ from math import ceil
 import json
 
 import sys
+import logging
 
 import OmniDB_app.include.Spartacus as Spartacus
 import OmniDB_app.include.Spartacus.Database as Database
@@ -21,6 +22,9 @@ import sqlparse
 import random
 import string
 import platform
+
+logger = logging.getLogger('OmniDB_app.views.workspace')
+
 
 def index(request):
     #Invalid session
@@ -117,11 +121,16 @@ def index(request):
         'shortcuts': shortcut_object,
         'tab_token': ''.join(random.choice(string.ascii_lowercase + string.digits) for i in range(20)),
         'show_terminal_option': v_show_terminal_option,
-        'url_folder': settings.PATH
+        'url_folder': settings.PATH,
+        #: JIANGJIE ANNOTATION :#
+        #: 返回默认打开的conn_id
+        'csv_delimiter': v_session.v_csv_delimiter,
+        'chat_link': '',
+        'default_open_conn_id': v_session.js_v_default_open_conn_id
     }
 
     #wiping tab connection list
-    v_session.v_tab_connections = dict([])
+    # v_session.v_tab_connections = dict([])
     request.session['omnidb_session'] = v_session
 
     template = loader.get_template('OmniDB_app/workspace.html')
@@ -416,14 +425,17 @@ def get_database_list(request):
     #retrieving saved tabs
     try:
         v_existing_tabs = []
-        v_tabs = v_session.v_omnidb_database.v_connection.Query('''
-            select conn_id,snippet, tab_id, title
-            from tabs
-            where user_id = {0}
-            order by conn_id, tab_id
-        '''.format(v_session.v_user_id))
-        for v_tab in v_tabs.Rows:
-            v_existing_tabs.append({'index': v_tab['conn_id'], 'snippet': v_tab['snippet'], 'title': v_tab['title'], 'tab_db_id': v_tab['tab_id']})
+        #: JIANGJIE ANNOTATION :#
+        #: 取消获取存在的tabs
+
+        # v_tabs = v_session.v_omnidb_database.v_connection.Query('''
+        #     select conn_id,snippet, tab_id, title
+        #     from tabs
+        #     where user_id = {0}
+        #     order by conn_id, tab_id
+        # '''.format(v_session.v_user_id))
+        # for v_tab in v_tabs.Rows:
+        #     v_existing_tabs.append({'index': v_tab['conn_id'], 'snippet': v_tab['snippet'], 'title': v_tab['title'], 'tab_db_id': v_tab['tab_id']})
 
     except Exception as exc:
         None

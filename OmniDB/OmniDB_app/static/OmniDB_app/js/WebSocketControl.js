@@ -38,11 +38,16 @@ function createWebSocket(p_address, p_port, p_onOpen, p_onMessage, p_onClose, p_
 		return;
 	}
 
-	var v_port = 80;
+	// var v_port = 80;
+	var default_port = 80
+	if (window.location.protocol == "https:")
+		default_port = 443
 
-	if(p_port != null && typeof p_port == 'number') {
-		v_port = p_port;
-	}
+    var v_port = parseInt(p_port) || default_port
+
+	// if(p_port != null && typeof p_port == 'number') {
+	// 	v_port = p_port;
+	// }
 
 	var v_connection = new WebSocket(p_address + ':' + v_port + v_url_folder + '/' + p_channel);
 
@@ -153,7 +158,10 @@ function sendWebSocketMessage(p_connection, p_messageCode, p_messageData, p_erro
 					v_code: p_messageCode,
 					v_context_code: v_context_code,
 					v_error: p_error,
-					v_data: p_messageData
+					v_data: p_messageData,
+                    //: JIANGJIE ANNOTATION ://
+					//: 发送 v_conn_id 值
+					v_conn_id: v_default_open_conn_id
 				})
 			);
 		}
