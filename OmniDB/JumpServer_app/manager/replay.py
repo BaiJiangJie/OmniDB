@@ -96,7 +96,6 @@ class Replay(object):
     def upload_to_external(self):
         """ TODO: 上传录像到外部存储 """
         config = self.get_storage_config()
-        logger.debug(f'录像存储配置: ({config})')
         storage = jms_storage.get_object_storage(config)
         ok, error = storage.upload(src=self.gz_filepath, target=self.upload_target)
         if not ok:
@@ -105,6 +104,7 @@ class Replay(object):
 
     def _upload(self):
         storage_type = self.get_storage_type()
+        logger.info(f'上传录像到: ({storage_type})')
         if storage_type == 'server':
             ok = self.upload_to_server()
         elif storage_type == 'null':

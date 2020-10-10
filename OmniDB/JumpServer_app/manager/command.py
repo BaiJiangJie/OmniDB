@@ -28,7 +28,6 @@ class Command(object):
 
     def upload_to_server(self):
         try:
-            logger.info('上传命令到server')
             resp_command = service.client.jumpserver_client.upload_command(self.data)
             if resp_command.status_code == 201:
                 return True
@@ -45,7 +44,7 @@ class Command(object):
         logger.info('不上传命令(存储类型为null)')
         return True
 
-    def upload_to_external(self):
+    def upload_to_es(self):
         """ TODO: 上传命令到外部存储 """
         try:
             config = self.get_storage_config()
@@ -59,12 +58,13 @@ class Command(object):
 
     def _upload(self):
         storage_type = self.get_storage_type()
+        logger.info(f'上传命令到: ({storage_type})')
         if storage_type == 'server':
             ok = self.upload_to_server()
         elif storage_type == 'null':
             ok = self.upload_to_null()
         else:
-            ok = self.upload_to_external()
+            ok = self.upload_to_es()
         return ok
 
     def increase_upload_failed_count(self):
