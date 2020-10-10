@@ -1043,8 +1043,6 @@ def thread_query(self,args,ws_object):
 
         #: 获取输入命令
         js_cmd_input = v_sql
-        #: 过滤输入命令
-        command_manager.filter_cmd_input(js_cmd_input)
 
         #Removing last character if it is a semi-colon
         if v_sql[-1:]==';':
@@ -1210,6 +1208,11 @@ def thread_query(self,args,ws_object):
 
                         v_data1 = v_database.v_connection.QueryBlock(v_sql, 10000, True, True)
 
+                        #: 获取命令输出
+                        js_cmd_output = v_data1.Pretty(v_database.v_connection.v_expanded)
+                        #: 记录命令输入输出
+                        ws_object.record_command(js_cmd_input, js_cmd_output)
+
                         v_notices = v_database.v_connection.GetNotices()
                         v_notices_text = ''
                         v_notices_length = len(v_notices)
@@ -1326,6 +1329,11 @@ def thread_query(self,args,ws_object):
                 }
                 v_response['v_error'] = True
 
+                #: 记录命令output
+                js_cmd_output = '{}'.format(str(exc))
+                #: 上传命令
+                ws_object.record_command(js_cmd_input, js_cmd_output)
+
                 ws_object.event_loop.add_callback(send_response_thread_safe,ws_object,json.dumps(v_response))
 
         #Log to history
@@ -1428,6 +1436,10 @@ def thread_console(self,args,ws_object):
                 counter = 0
                 v_show_fetch_button = False
                 for sql in list_sql:
+
+                    #: 获取输入命令
+                    js_cmd_input = sql
+
                     counter = counter + 1
                     try:
                         formated_sql = sql.strip()
@@ -1446,6 +1458,8 @@ def thread_console(self,args,ws_object):
 
                         v_data_return += v_data1
 
+                        js_cmd_output = v_data1
+
                         if v_database.v_use_server_cursor:
                             if v_database.v_connection.v_last_fetched_size == 50:
                                 v_tab_object['remaining_commands'] = list_sql[counter:]
@@ -1462,6 +1476,9 @@ def thread_console(self,args,ws_object):
                         except Exception as exc:
                             None
                         v_data_return += str(exc)
+                        js_cmd_output = str(exc)
+
+                    ws_object.record_command(js_cmd_input, js_cmd_output)
                     v_tab_object['remaining_commands'] = []
 
             log_end_time = datetime.now()
@@ -1666,6 +1683,8 @@ def thread_query_edit_data(self,args,ws_object):
         v_session = ws_object.v_session
         v_database = args['v_database']
 
+        js_cmd_input = ''
+
         try:
             if v_database.v_has_schema:
                 v_table_name = v_schema + '.' + v_table
@@ -1680,7 +1699,12 @@ def thread_query_edit_data(self,args,ws_object):
                 v_first = False
                 v_column_list = v_column_list + v_column['v_readformat'].replace('#', v_column['v_column'])
 
+            js_cmd_input = v_database.QueryTableRecordsSQL(v_column_list, v_table_name, v_filter, v_count)
+
             v_data1 = v_database.QueryTableRecords(v_column_list, v_table_name, v_filter, v_count)
+
+            js_cmd_output = v_data1.Pretty(v_database.v_connection.v_expanded)
+            ws_object.record_command(js_cmd_input, js_cmd_output)
 
             v_response['v_data']['v_query_info'] = 'Number of records: ' + str(len(v_data1.Rows))
 
@@ -1703,6 +1727,9 @@ def thread_query_edit_data(self,args,ws_object):
         except Exception as exc:
             v_response['v_data'] = str(exc)
             v_response['v_error'] = True
+
+            js_cmd_output = str(exc)
+            ws_object.record_command(js_cmd_input, js_cmd_output)
 
         if not self.cancel:
             ws_object.event_loop.add_callback(send_response_thread_safe,ws_object,json.dumps(v_response))
@@ -1784,6 +1811,10 @@ def thread_save_edit_data(self,args,ws_object):
 
                 v_response['v_data'].append(v_row_info_return)
 
+                js_cmd_input = v_command
+                js_cmd_output = v_row_info_return['v_message']
+                ws_object.record_command(js_cmd_input, js_cmd_output)
+
             # Inserting new row
             elif v_row_info['mode'] == 2:
 
@@ -1832,6 +1863,10 @@ def thread_save_edit_data(self,args,ws_object):
                     v_row_info_return['v_message'] = str(exc)
 
                 v_response['v_data'].append(v_row_info_return)
+
+                js_cmd_input = v_command
+                js_cmd_output = v_row_info_return['v_message']
+                ws_object.record_command(js_cmd_input, js_cmd_output)
 
             # Updating existing row
             elif v_row_info['mode'] == 1:
@@ -1891,6 +1926,10 @@ def thread_save_edit_data(self,args,ws_object):
                     v_row_info_return['v_message'] = str(exc)
 
                 v_response['v_data'].append(v_row_info_return)
+
+                js_cmd_input = v_command
+                js_cmd_output = v_row_info_return['v_message']
+                ws_object.record_command(js_cmd_input, js_cmd_output)
 
             i = i + 1
 

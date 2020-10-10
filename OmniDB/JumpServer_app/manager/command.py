@@ -136,7 +136,7 @@ class CommandManager(object):
     def filter_cmd_input(cmd_input):
         """ TODO: 过滤命令 """
         logger.info(f'过滤命令输入: {cmd_input}')
-        return cmd_input
+        return True
 
     def pretty_cmd_input(self, cmd_input, db_type):
         """ 格式化cmd_input """
